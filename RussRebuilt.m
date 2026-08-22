@@ -191,6 +191,7 @@ static void ApplyRouteVisibility(BOOL enabled) {
 }
 
 static void ReapplyRuntimeValues(float firstFov, float thirdFov, float distance, float speed, BOOL routeEnabled) {
+    (void)firstFov;
     ApplyCameraFollow(distance, thirdFov);
     ApplyFieldOfView((CGFloat)thirdFov);
     ApplyTimeScale(speed);
@@ -247,12 +248,14 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 @interface RussOverlayController : NSObject
 @property(nonatomic, strong) UIView *panel;
 @property(nonatomic, strong) UIButton *floatingButton;
+@property(nonatomic, strong) UIPanGestureRecognizer *floatingPanGesture;
 @property(nonatomic, assign) CGFloat firstPersonFOV;
 @property(nonatomic, assign) CGFloat thirdPersonFOV;
 @property(nonatomic, assign) CGFloat cameraDistance;
 @property(nonatomic, assign) CGFloat speedMultiplier;
 @property(nonatomic, assign) BOOL routeEnabled;
 @property(nonatomic, assign) BOOL unknownFeaturesEnabled;
+@property(nonatomic, assign) CGPoint floatingButtonStartCenter;
 @property(nonatomic, strong) NSTimer *refreshTimer;
 @end
 
@@ -277,6 +280,8 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
         [self.floatingButton setTitle:@"R" forState:UIControlStateNormal];
         [self.floatingButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
         [self.floatingButton addTarget:self action:@selector(togglePanel) forControlEvents:UIControlEventTouchUpInside];
+        self.floatingPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleFloatingPan:)];
+        [self.floatingButton addGestureRecognizer:self.floatingPanGesture];
         [window addSubview:self.floatingButton];
 
         [self buildPanelInWindow:window];
@@ -342,6 +347,32 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.panel.hidden = !self.panel.hidden;
 }
 
+- (void)handleFloatingPan:(UIPanGestureRecognizer *)gesture {
+    UIView *button = self.floatingButton;
+    UIWindow *window = button.window;
+    if (button == nil || window == nil) return;
+    if (gesture.state == UIGestureRecognizerStateBegan) {
+        self.floatingButtonStartCenter = button.center;
+    }
+    CGPoint translation = [gesture translationInView:window];
+    CGPoint center = CGPointMake(self.floatingButtonStartCenter.x + translation.x, self.floatingButtonStartCenter.y + translation.y);
+    CGFloat halfWidth = button.bounds.size.width * 0.5;
+    CGFloat halfHeight = button.bounds.size.height * 0.5;
+    UIEdgeInsets safeInsets = window.safeAreaInsets;
+    CGFloat minX = safeInsets.left + halfWidth;
+    CGFloat maxX = window.bounds.size.width - safeInsets.right - halfWidth;
+    CGFloat minY = safeInsets.top + halfHeight;
+    CGFloat maxY = window.bounds.size.height - safeInsets.bottom - halfHeight;
+    center.x = MIN(MAX(center.x, minX), maxX);
+    center.y = MIN(MAX(center.y, minY), maxY);
+    button.center = center;
+    if (gesture.state == UIGestureRecognizerStateEnded || gesture.state == UIGestureRecognizerStateCancelled) {
+        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+        [defaults setFloat:center.x forKey:@"russ.buttonX"];
+        [defaults setFloat:center.y forKey:@"russ.buttonY"];
+    }
+}
+
 - (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; [self reapplyRuntimeValues]; }
 - (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; [self reapplyRuntimeValues]; }
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; ApplyTimeScale(self.speedMultiplier); }
@@ -362,6 +393,13 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.cameraDistance = [defaults objectForKey:@"russ.distance"] ? [defaults floatForKey:@"russ.distance"] : 8.0;
     self.unknownFeaturesEnabled = [defaults boolForKey:@"russ.unknownFeatures"];
     self.routeEnabled = [defaults boolForKey:@"russ.route"];
+    CGFloat savedX = [defaults floatForKey:@"russ.buttonX"];
+    CGFloat savedY = [defaults floatForKey:@"russ.buttonY"];
+    if (savedX > 0.0 && savedY > 0.0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.floatingButton.center = CGPointMake(savedX, savedY);
+        });
+    }
 }
 
 - (void)saveSettings {
