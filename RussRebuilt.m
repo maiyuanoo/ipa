@@ -105,8 +105,8 @@ static void ApplyCameraFollow(float firstPersonFov, float thirdPersonFov) {
     Il2CppObject *instance = gCameraGetInstance ? gIl2CppRuntimeInvoke(gCameraGetInstance, NULL, NULL, &exception) : NULL;
     if (instance == NULL || exception != NULL) return;
 
+    float fovValue = (float)MAX(30.0, MIN(170.0, firstPersonFov));
     if (gCameraSetFov != NULL) {
-        float fovValue = (float)MAX(30.0, MIN(170.0, firstPersonFov));
         void *args[] = { &fovValue };
         exception = NULL;
         gIl2CppRuntimeInvoke(gCameraSetFov, instance, args, &exception);
