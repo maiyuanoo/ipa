@@ -86,11 +86,6 @@ static void ApplyCameraFollow(float thirdPersonFov, float firstPersonFov) {
 
     float firstValue = (float)MAX(30.0, MIN(170.0, firstPersonFov));
     float thirdValue = (float)MAX(30.0, MIN(170.0, thirdPersonFov));
-    const MethodInfo *setFov = gIl2CppClassGetMethodFromName(klass, "set_FOV", 1);
-    if (setFov != NULL) {
-        void *args[] = { &firstValue };
-        gIl2CppRuntimeInvoke(setFov, instance, args, &exception);
-    }
     if (gIl2CppClassGetFieldFromName == NULL || gIl2CppFieldSetValue == NULL) return;
     void *firstField = gIl2CppClassGetFieldFromName(klass, "UGC2FirstFOV");
     void *thirdField = gIl2CppClassGetFieldFromName(klass, "UGC2FOV");
@@ -152,21 +147,12 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 @property(nonatomic, assign) CGFloat speedMultiplier;
 @property(nonatomic, assign) CGFloat cameraDistance;
 @property(nonatomic, assign) BOOL routeEnabled;
-@property(nonatomic, strong) NSTimer *refreshTimer;
 @end
 
 @implementation RussOverlayController
 
 - (void)install {
     [self loadSettings];
-
-    if (self.refreshTimer == nil) {
-        self.refreshTimer = [NSTimer scheduledTimerWithTimeInterval:0.2
-                                                               target:self
-                                                             selector:@selector(reapplyRuntimeValues)
-                                                             userInfo:nil
-                                                              repeats:YES];
-    }
 
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
@@ -184,22 +170,8 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
         [window addSubview:self.floatingButton];
 
         [self buildPanelInWindow:window];
+        ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV);
     });
-}
-
-- (void)reapplyRuntimeValues {
-    if (self.firstPersonFOV < 30.0 || self.thirdPersonFOV < 30.0) {
-        return;
-    }
-    if (![NSThread isMainThread]) {
-        dispatch_async(dispatch_get_main_queue(), ^{ [self reapplyRuntimeValues]; });
-        return;
-    }
-    ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV);
-}
-
-- (void)dealloc {
-    [self.refreshTimer invalidate];
 }
 
 - (void)buildPanelInWindow:(UIWindow *)window {
