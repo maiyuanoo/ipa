@@ -167,6 +167,9 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
         [self.floatingButton setTitle:@"R" forState:UIControlStateNormal];
         [self.floatingButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
         [self.floatingButton addTarget:self action:@selector(togglePanel) forControlEvents:UIControlEventTouchUpInside];
+        UIPanGestureRecognizer *buttonDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleDrag:)];
+        buttonDrag.cancelsTouchesInView = NO;
+        [self.floatingButton addGestureRecognizer:buttonDrag];
         [window addSubview:self.floatingButton];
 
         [self buildPanelInWindow:window];
@@ -179,6 +182,9 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.panel.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
     self.panel.layer.cornerRadius = 8.0;
     self.panel.hidden = YES;
+
+    UIPanGestureRecognizer *panelDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleDrag:)];
+    [self.panel addGestureRecognizer:panelDrag];
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 14.0, 210.0, 26.0)];
     title.text = @"视角调试";
@@ -222,6 +228,28 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.panel.hidden = !self.panel.hidden;
 }
 /*点击隐藏悬浮 */
+- (void)handleDrag:(UIPanGestureRecognizer *)gesture {
+    UIView *view = gesture.view;
+    UIView *container = view.superview;
+    if (view == nil || container == nil) return;
+    CGPoint translation = [gesture translationInView:container];
+    CGPoint center = view.center;
+    center.x += translation.x;
+    center.y += translation.y;
+
+    CGFloat halfWidth = view.bounds.size.width * 0.5;
+    CGFloat halfHeight = view.bounds.size.height * 0.5;
+    CGRect safe = container.bounds;
+    if ([container isKindOfClass:[UIWindow class]]) {
+        UIWindow *window = (UIWindow *)container;
+        safe = UIEdgeInsetsInsetRect(window.bounds, window.safeAreaInsets);
+    }
+    center.x = MAX(safe.origin.x + halfWidth, MIN(safe.origin.x + safe.size.width - halfWidth, center.x));
+    center.y = MAX(safe.origin.y + halfHeight, MIN(safe.origin.y + safe.size.height - halfHeight, center.y));
+    view.center = center;
+    [gesture setTranslation:CGPointZero inView:container];
+}
+/*手指拖动悬浮按钮或面板 限制中心点不超出安全区域 */
 - (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV); }
 - (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV); }
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; }
