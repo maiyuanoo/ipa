@@ -1,5 +1,99 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <dlfcn.h>
+
+typedef struct Il2CppDomain Il2CppDomain;
+typedef struct Il2CppAssembly Il2CppAssembly;
+typedef struct Il2CppImage Il2CppImage;
+typedef struct MethodInfo MethodInfo;
+typedef struct Il2CppObject Il2CppObject;
+typedef struct Il2CppArray {
+    void *klass;
+    void *monitor;
+    void *bounds;
+    uintptr_t maxLength;
+    Il2CppObject *objects[];
+} Il2CppArray;
+
+typedef Il2CppDomain *(*Il2CppDomainGet)(void);
+typedef Il2CppAssembly **(*Il2CppDomainGetAssemblies)(const Il2CppDomain *domain, size_t *size);
+typedef const Il2CppImage *(*Il2CppAssemblyGetImage)(const Il2CppAssembly *assembly);
+typedef void *(*Il2CppClassFromName)(const Il2CppImage *image, const char *namespaze, const char *name);
+typedef const MethodInfo *(*Il2CppClassGetMethodFromName)(void *klass, const char *name, int argumentsCount);
+typedef Il2CppObject *(*Il2CppRuntimeInvoke)(const MethodInfo *method, void *object, void **parameters, Il2CppObject **exception);
+typedef void *(*Il2CppThreadAttach)(Il2CppDomain *domain);
+
+static Il2CppDomainGet gIl2CppDomainGet;
+static Il2CppDomainGetAssemblies gIl2CppDomainGetAssemblies;
+static Il2CppAssemblyGetImage gIl2CppAssemblyGetImage;
+static Il2CppClassFromName gIl2CppClassFromName;
+static Il2CppClassGetMethodFromName gIl2CppClassGetMethodFromName;
+static Il2CppRuntimeInvoke gIl2CppRuntimeInvoke;
+static Il2CppThreadAttach gIl2CppThreadAttach;
+
+static BOOL ResolveIl2Cpp(void) {
+    if (gIl2CppDomainGet != NULL) {
+        return YES;
+    }
+
+    gIl2CppDomainGet = (Il2CppDomainGet)dlsym(RTLD_DEFAULT, "il2cpp_domain_get");
+    gIl2CppDomainGetAssemblies = (Il2CppDomainGetAssemblies)dlsym(RTLD_DEFAULT, "il2cpp_domain_get_assemblies");
+    gIl2CppAssemblyGetImage = (Il2CppAssemblyGetImage)dlsym(RTLD_DEFAULT, "il2cpp_assembly_get_image");
+    gIl2CppClassFromName = (Il2CppClassFromName)dlsym(RTLD_DEFAULT, "il2cpp_class_from_name");
+    gIl2CppClassGetMethodFromName = (Il2CppClassGetMethodFromName)dlsym(RTLD_DEFAULT, "il2cpp_class_get_method_from_name");
+    gIl2CppRuntimeInvoke = (Il2CppRuntimeInvoke)dlsym(RTLD_DEFAULT, "il2cpp_runtime_invoke");
+    gIl2CppThreadAttach = (Il2CppThreadAttach)dlsym(RTLD_DEFAULT, "il2cpp_thread_attach");
+
+    return gIl2CppDomainGet != NULL && gIl2CppDomainGetAssemblies != NULL &&
+        gIl2CppAssemblyGetImage != NULL && gIl2CppClassFromName != NULL &&
+        gIl2CppClassGetMethodFromName != NULL && gIl2CppRuntimeInvoke != NULL;
+}
+
+static void ApplyFieldOfView(CGFloat fieldOfView) {
+    if (!ResolveIl2Cpp()) {
+        return;
+    }
+
+    Il2CppDomain *domain = gIl2CppDomainGet();
+    if (domain == NULL) {
+        return;
+    }
+    if (gIl2CppThreadAttach != NULL) {
+        gIl2CppThreadAttach(domain);
+    }
+
+    size_t assemblyCount = 0;
+    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
+    void *cameraClass = NULL;
+    for (size_t index = 0; index < assemblyCount && cameraClass == NULL; index++) {
+        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
+        cameraClass = gIl2CppClassFromName(image, "UnityEngine", "Camera");
+    }
+    if (cameraClass == NULL) {
+        return;
+    }
+
+    const MethodInfo *allCameras = gIl2CppClassGetMethodFromName(cameraClass, "get_allCameras", 0);
+    const MethodInfo *setFieldOfView = gIl2CppClassGetMethodFromName(cameraClass, "set_fieldOfView", 1);
+    if (allCameras == NULL || setFieldOfView == NULL) {
+        return;
+    }
+
+    Il2CppObject *exception = NULL;
+    Il2CppArray *cameras = (Il2CppArray *)gIl2CppRuntimeInvoke(allCameras, NULL, NULL, &exception);
+    if (exception != NULL || cameras == NULL) {
+        return;
+    }
+
+    float value = (float)MAX(45.0, MIN(120.0, fieldOfView));
+    void *arguments[] = { &value };
+    for (uintptr_t index = 0; index < cameras->maxLength; index++) {
+        if (cameras->objects[index] != NULL) {
+            exception = NULL;
+            gIl2CppRuntimeInvoke(setFieldOfView, cameras->objects[index], arguments, &exception);
+        }
+    }
+}
 
 @interface RussOverlayController : NSObject
 @property(nonatomic, strong) UIView *panel;
@@ -82,8 +176,8 @@
     self.panel.hidden = !self.panel.hidden;
 }
 
-- (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; }
-- (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; }
+- (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; ApplyFieldOfView(sender.value); }
+- (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; ApplyFieldOfView(sender.value); }
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; }
 - (void)routeChanged:(UISwitch *)sender { self.routeEnabled = sender.isOn; [self saveSettings]; }
 
