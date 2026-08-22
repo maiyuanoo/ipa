@@ -154,6 +154,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 - (void)install {
     [self loadSettings];
 
+
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
         if (window == nil || self.floatingButton != nil) {
