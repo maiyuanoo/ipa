@@ -23,8 +23,13 @@ typedef void *(*Il2CppClassFromName)(const Il2CppImage *image, const char *names
 typedef const MethodInfo *(*Il2CppClassGetMethodFromName)(void *klass, const char *name, int argumentsCount);
 typedef void *(*Il2CppClassGetType)(void *klass);
 typedef void *(*Il2CppTypeGetObject)(void *type);
+typedef void *(*Il2CppClassGetFieldFromName)(void *klass, const char *name);
+typedef size_t (*Il2CppFieldGetOffset)(void *field);
+typedef void (*Il2CppFieldSetValue)(void *object, void *field, void *value);
 typedef Il2CppObject *(*Il2CppRuntimeInvoke)(const MethodInfo *method, void *object, void **parameters, Il2CppObject **exception);
 typedef void *(*Il2CppThreadAttach)(Il2CppDomain *domain);
+typedef void (*FeatureBoolFunction)(BOOL enabled);
+typedef void (*FeatureFloatFunction)(float value);
 
 static Il2CppDomainGet gIl2CppDomainGet;
 static Il2CppDomainGetAssemblies gIl2CppDomainGetAssemblies;
@@ -33,8 +38,20 @@ static Il2CppClassFromName gIl2CppClassFromName;
 static Il2CppClassGetMethodFromName gIl2CppClassGetMethodFromName;
 static Il2CppClassGetType gIl2CppClassGetType;
 static Il2CppTypeGetObject gIl2CppTypeGetObject;
+static Il2CppClassGetFieldFromName gIl2CppClassGetFieldFromName;
+static Il2CppFieldGetOffset gIl2CppFieldGetOffset;
+static Il2CppFieldSetValue gIl2CppFieldSetValue;
 static Il2CppRuntimeInvoke gIl2CppRuntimeInvoke;
 static Il2CppThreadAttach gIl2CppThreadAttach;
+static FeatureFloatFunction gSetGlobalSpeed;
+static FeatureBoolFunction gSetFogRemoval;
+static FeatureBoolFunction gSetHighlight;
+static FeatureBoolFunction gSetCoffinReveal;
+static FeatureBoolFunction gSetFirstPersonFOVEnabled;
+static FeatureBoolFunction gSetThirdPersonFOVEnabled;
+static FeatureFloatFunction gSetDemagnetization;
+static void (*gRouteSetEnabled)(BOOL enabled);
+static void (*gRouteShutdown)(void);
 
 static BOOL ResolveIl2Cpp(void) {
     if (gIl2CppDomainGet != NULL) {
@@ -48,8 +65,20 @@ static BOOL ResolveIl2Cpp(void) {
     gIl2CppClassGetMethodFromName = (Il2CppClassGetMethodFromName)dlsym(RTLD_DEFAULT, "il2cpp_class_get_method_from_name");
     gIl2CppClassGetType = (Il2CppClassGetType)dlsym(RTLD_DEFAULT, "il2cpp_class_get_type");
     gIl2CppTypeGetObject = (Il2CppTypeGetObject)dlsym(RTLD_DEFAULT, "il2cpp_type_get_object");
+    gIl2CppClassGetFieldFromName = (Il2CppClassGetFieldFromName)dlsym(RTLD_DEFAULT, "il2cpp_class_get_field_from_name");
+    gIl2CppFieldGetOffset = (Il2CppFieldGetOffset)dlsym(RTLD_DEFAULT, "il2cpp_field_get_offset");
+    gIl2CppFieldSetValue = (Il2CppFieldSetValue)dlsym(RTLD_DEFAULT, "il2cpp_field_set_value");
     gIl2CppRuntimeInvoke = (Il2CppRuntimeInvoke)dlsym(RTLD_DEFAULT, "il2cpp_runtime_invoke");
     gIl2CppThreadAttach = (Il2CppThreadAttach)dlsym(RTLD_DEFAULT, "il2cpp_thread_attach");
+    gSetGlobalSpeed = (FeatureFloatFunction)dlsym(RTLD_DEFAULT, "YYGameMemorySetGlobalSpeed");
+    gSetFogRemoval = (FeatureBoolFunction)dlsym(RTLD_DEFAULT, "YYGameMemorySetFogRemoval");
+    gSetHighlight = (FeatureBoolFunction)dlsym(RTLD_DEFAULT, "YYGameMemorySetHighlight");
+    gSetCoffinReveal = (FeatureBoolFunction)dlsym(RTLD_DEFAULT, "YYGameMemorySetCoffinReveal");
+    gSetFirstPersonFOVEnabled = (FeatureBoolFunction)dlsym(RTLD_DEFAULT, "YYGameMemorySetFirstPersonFOVEnabled");
+    gSetThirdPersonFOVEnabled = (FeatureBoolFunction)dlsym(RTLD_DEFAULT, "YYGameMemorySetThirdPersonFOVEnabled");
+    gSetDemagnetization = (FeatureFloatFunction)dlsym(RTLD_DEFAULT, "YYGameMemorySetDemagnetization");
+    gRouteSetEnabled = (void (*)(BOOL))dlsym(RTLD_DEFAULT, "RussIslandRouteOverlaySetEnabled");
+    gRouteShutdown = (void (*)(void))dlsym(RTLD_DEFAULT, "RussIslandRouteOverlayShutdown");
 
     return gIl2CppDomainGet != NULL && gIl2CppDomainGetAssemblies != NULL &&
         gIl2CppAssemblyGetImage != NULL && gIl2CppClassFromName != NULL &&
@@ -78,6 +107,11 @@ static const MethodInfo *FindMethod(void *klass, const char *name, int argumentC
     return gIl2CppClassGetMethodFromName(klass, name, argumentCount);
 }
 
+static void *FindField(void *klass, const char *name) {
+    if (klass == NULL || gIl2CppClassGetFieldFromName == NULL) return NULL;
+    return gIl2CppClassGetFieldFromName(klass, name);
+}
+
 static BOOL InvokeFloatSetter(void *object, void *klass, const char *name, float value) {
     const MethodInfo *method = FindMethod(klass, name, 1);
     if (method == NULL || gIl2CppRuntimeInvoke == NULL) return NO;
@@ -85,6 +119,21 @@ static BOOL InvokeFloatSetter(void *object, void *klass, const char *name, float
     void *arguments[] = { &value };
     gIl2CppRuntimeInvoke(method, object, arguments, &exception);
     return exception == NULL;
+}
+
+static void ApplyMemoryFeatures(float speed, BOOL routeEnabled) {
+    if (gSetGlobalSpeed != NULL) gSetGlobalSpeed(speed);
+    if (gRouteSetEnabled != NULL) gRouteSetEnabled(routeEnabled);
+}
+
+static void ApplyUnknownFeatures(BOOL enabled, float demagnetization) {
+    if (!enabled) return;
+    if (gSetFogRemoval != NULL) gSetFogRemoval(enabled);
+    if (gSetHighlight != NULL) gSetHighlight(enabled);
+    if (gSetCoffinReveal != NULL) gSetCoffinReveal(enabled);
+    if (gSetFirstPersonFOVEnabled != NULL) gSetFirstPersonFOVEnabled(enabled);
+    if (gSetThirdPersonFOVEnabled != NULL) gSetThirdPersonFOVEnabled(enabled);
+    if (gSetDemagnetization != NULL) gSetDemagnetization(demagnetization);
 }
 
 static void ApplyFieldOfView(CGFloat fieldOfView);
@@ -95,6 +144,25 @@ static void ApplyTimeScale(float multiplier) {
     if (klass == NULL) return;
     float value = (float)MAX(0.1, MIN(10.0, multiplier));
     InvokeFloatSetter(NULL, klass, "set_timeScale", value);
+}
+
+static void ApplyCameraFollow(float distance, float fov) {
+    void *klass = FindClass("UpdateScript_500.dll", "", "CameraFollow");
+    if (klass == NULL) return;
+    const MethodInfo *getInstance = FindMethod(klass, "get_instance", 0);
+    if (getInstance == NULL) return;
+    Il2CppObject *exception = NULL;
+    Il2CppObject *instance = gIl2CppRuntimeInvoke(getInstance, NULL, NULL, &exception);
+    if (instance == NULL || exception != NULL) return;
+    float fovValue = (float)MAX(45.0, MIN(150.0, fov));
+    InvokeFloatSetter(instance, klass, "set_FOV", fovValue);
+    float distanceValue = (float)MAX(0.5, MIN(100.0, distance));
+    void *field = FindField(klass, "UGC2Distance");
+    if (field == NULL) field = FindField(klass, "Distance");
+    if (field == NULL) field = FindField(klass, "Radius");
+    if (field != NULL && gIl2CppFieldSetValue != NULL && gIl2CppFieldGetOffset(field) != (size_t)-1) {
+        gIl2CppFieldSetValue(instance, field, &distanceValue);
+    }
 }
 
 static void ApplyRouteVisibility(BOOL enabled) {
@@ -122,10 +190,11 @@ static void ApplyRouteVisibility(BOOL enabled) {
     }
 }
 
-static void ReapplyRuntimeValues(float firstFov, float thirdFov, float speed, BOOL routeEnabled) {
-    (void)firstFov;
+static void ReapplyRuntimeValues(float firstFov, float thirdFov, float distance, float speed, BOOL routeEnabled) {
+    ApplyCameraFollow(distance, thirdFov);
     ApplyFieldOfView((CGFloat)thirdFov);
     ApplyTimeScale(speed);
+    ApplyMemoryFeatures(speed, routeEnabled);
     ApplyRouteVisibility(routeEnabled);
 }
 
@@ -180,8 +249,10 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 @property(nonatomic, strong) UIButton *floatingButton;
 @property(nonatomic, assign) CGFloat firstPersonFOV;
 @property(nonatomic, assign) CGFloat thirdPersonFOV;
+@property(nonatomic, assign) CGFloat cameraDistance;
 @property(nonatomic, assign) CGFloat speedMultiplier;
 @property(nonatomic, assign) BOOL routeEnabled;
+@property(nonatomic, assign) BOOL unknownFeaturesEnabled;
 @property(nonatomic, strong) NSTimer *refreshTimer;
 @end
 
@@ -214,7 +285,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 }
 
 - (void)buildPanelInWindow:(UIWindow *)window {
-    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 130.0, 280.0, 370.0)];
+    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 130.0, 280.0, 430.0)];
     self.panel.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
     self.panel.layer.cornerRadius = 8.0;
     self.panel.hidden = YES;
@@ -229,16 +300,26 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     [self addSliderWithTitle:@"第三人称 FOV" value:self.thirdPersonFOV minimum:30.0 maximum:170.0 y:120.0 action:@selector(thirdPersonFOVChanged:)];
     [self addSliderWithTitle:@"速度倍率（待适配）" value:self.speedMultiplier minimum:0.5 maximum:3.0 y:186.0 action:@selector(speedChanged:)];
 
-    UISwitch *routeSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 250.0, 0.0, 0.0)];
+    [self addSliderWithTitle:@"Camera Distance" value:self.cameraDistance minimum:0.5 maximum:100.0 y:252.0 action:@selector(cameraDistanceChanged:)];
+    UISwitch *routeSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 316.0, 0.0, 0.0)];
     routeSwitch.on = self.routeEnabled;
     [routeSwitch addTarget:self action:@selector(routeChanged:) forControlEvents:UIControlEventValueChanged];
     [self.panel addSubview:routeSwitch];
 
-    UILabel *routeLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 252.0, 150.0, 28.0)];
+    UILabel *routeLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 318.0, 150.0, 28.0)];
     routeLabel.text = @"路线显示（待适配）";
     routeLabel.textColor = UIColor.whiteColor;
     routeLabel.font = [UIFont systemFontOfSize:14.0];
     [self.panel addSubview:routeLabel];
+    UISwitch *unknownSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 382.0, 0.0, 0.0)];
+    unknownSwitch.on = self.unknownFeaturesEnabled;
+    [unknownSwitch addTarget:self action:@selector(unknownFeaturesChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.panel addSubview:unknownSwitch];
+    UILabel *unknownLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 384.0, 150.0, 28.0)];
+    unknownLabel.text = @"未知功能";
+    unknownLabel.textColor = UIColor.whiteColor;
+    unknownLabel.font = [UIFont systemFontOfSize:14.0];
+    [self.panel addSubview:unknownLabel];
     [window addSubview:self.panel];
 }
 
@@ -264,10 +345,13 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 - (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; [self reapplyRuntimeValues]; }
 - (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; [self reapplyRuntimeValues]; }
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; ApplyTimeScale(self.speedMultiplier); }
+- (void)cameraDistanceChanged:(UISlider *)sender { self.cameraDistance = sender.value; [self saveSettings]; [self reapplyRuntimeValues]; }
 - (void)routeChanged:(UISwitch *)sender { self.routeEnabled = sender.isOn; [self saveSettings]; ApplyRouteVisibility(self.routeEnabled); }
+- (void)unknownFeaturesChanged:(UISwitch *)sender { self.unknownFeaturesEnabled = sender.isOn; [self saveSettings]; [self reapplyRuntimeValues]; }
 
 - (void)reapplyRuntimeValues {
-    ReapplyRuntimeValues((float)self.firstPersonFOV, (float)self.thirdPersonFOV, (float)self.speedMultiplier, self.routeEnabled);
+    ReapplyRuntimeValues((float)self.firstPersonFOV, (float)self.thirdPersonFOV, (float)self.cameraDistance, (float)self.speedMultiplier, self.routeEnabled);
+    ApplyUnknownFeatures(self.unknownFeaturesEnabled, 0.0f);
 }
 
 - (void)loadSettings {
@@ -275,6 +359,8 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.firstPersonFOV = [defaults objectForKey:@"russ.firstFOV"] ? [defaults floatForKey:@"russ.firstFOV"] : 75.0;
     self.thirdPersonFOV = [defaults objectForKey:@"russ.thirdFOV"] ? [defaults floatForKey:@"russ.thirdFOV"] : 75.0;
     self.speedMultiplier = [defaults objectForKey:@"russ.speed"] ? [defaults floatForKey:@"russ.speed"] : 1.0;
+    self.cameraDistance = [defaults objectForKey:@"russ.distance"] ? [defaults floatForKey:@"russ.distance"] : 8.0;
+    self.unknownFeaturesEnabled = [defaults boolForKey:@"russ.unknownFeatures"];
     self.routeEnabled = [defaults boolForKey:@"russ.route"];
 }
 
@@ -283,6 +369,8 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     [defaults setFloat:self.firstPersonFOV forKey:@"russ.firstFOV"];
     [defaults setFloat:self.thirdPersonFOV forKey:@"russ.thirdFOV"];
     [defaults setFloat:self.speedMultiplier forKey:@"russ.speed"];
+    [defaults setFloat:self.cameraDistance forKey:@"russ.distance"];
+    [defaults setBool:self.unknownFeaturesEnabled forKey:@"russ.unknownFeatures"];
     [defaults setBool:self.routeEnabled forKey:@"russ.route"];
 }
 
