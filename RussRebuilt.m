@@ -76,7 +76,7 @@ static void *FindClass(const char *assemblyName, const char *namespaceName, cons
     return NULL;
 }
 
-static void ApplyCameraFollow(float distance, float fov) {
+static void ApplyCameraFollow(float thirdPersonFov, float firstPersonFov) {
     void *klass = FindClass("UpdateScript_500.dll", "", "CameraFollow");
     if (klass == NULL || gIl2CppClassGetMethodFromName == NULL) return;
     const MethodInfo *getInstance = gIl2CppClassGetMethodFromName(klass, "get_instance", 0);
@@ -84,20 +84,18 @@ static void ApplyCameraFollow(float distance, float fov) {
     Il2CppObject *instance = getInstance ? gIl2CppRuntimeInvoke(getInstance, NULL, NULL, &exception) : NULL;
     if (instance == NULL || exception != NULL) return;
 
+    float firstValue = (float)MAX(30.0, MIN(170.0, firstPersonFov));
+    float thirdValue = (float)MAX(30.0, MIN(170.0, thirdPersonFov));
     const MethodInfo *setFov = gIl2CppClassGetMethodFromName(klass, "set_FOV", 1);
     if (setFov != NULL) {
-        float fovValue = (float)MAX(45.0, MIN(150.0, fov));
-        void *args[] = { &fovValue };
+        void *args[] = { &firstValue };
         gIl2CppRuntimeInvoke(setFov, instance, args, &exception);
     }
     if (gIl2CppClassGetFieldFromName == NULL || gIl2CppFieldSetValue == NULL) return;
-    void *distanceField = gIl2CppClassGetFieldFromName(klass, "UGC2Distance");
-    if (distanceField == NULL) distanceField = gIl2CppClassGetFieldFromName(klass, "Distance");
-    if (distanceField == NULL) distanceField = gIl2CppClassGetFieldFromName(klass, "Radius");
-    if (distanceField != NULL && gIl2CppFieldGetOffset(distanceField) != (size_t)-1) {
-        float distanceValue = (float)MAX(0.5, MIN(100.0, distance));
-        gIl2CppFieldSetValue(instance, distanceField, &distanceValue);
-    }
+    void *firstField = gIl2CppClassGetFieldFromName(klass, "UGC2FirstFOV");
+    void *thirdField = gIl2CppClassGetFieldFromName(klass, "UGC2FOV");
+    if (firstField != NULL && gIl2CppFieldGetOffset(firstField) != (size_t)-1) gIl2CppFieldSetValue(instance, firstField, &firstValue);
+    if (thirdField != NULL && gIl2CppFieldGetOffset(thirdField) != (size_t)-1) gIl2CppFieldSetValue(instance, thirdField, &thirdValue);
 }
 
 static void ApplyFieldOfView(CGFloat fieldOfView) {
@@ -190,14 +188,14 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 }
 
 - (void)reapplyRuntimeValues {
-    if (self.firstPersonFOV < 45.0 || self.cameraDistance < 0.5) {
+    if (self.firstPersonFOV < 30.0 || self.thirdPersonFOV < 30.0) {
         return;
     }
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{ [self reapplyRuntimeValues]; });
         return;
     }
-    ApplyCameraFollow(self.cameraDistance, self.firstPersonFOV);
+    ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV);
 }
 
 - (void)dealloc {
@@ -216,8 +214,8 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [self.panel addSubview:title];
 
-    [self addSliderWithTitle:@"视场角" value:self.firstPersonFOV minimum:45.0 maximum:150.0 y:54.0 action:@selector(firstPersonFOVChanged:)];
-    [self addSliderWithTitle:@"相机距离" value:self.cameraDistance minimum:0.5 maximum:100.0 y:120.0 action:@selector(cameraDistanceChanged:)];
+    [self addSliderWithTitle:@"第一人称 FOV" value:self.firstPersonFOV minimum:30.0 maximum:170.0 y:54.0 action:@selector(firstPersonFOVChanged:)];
+    [self addSliderWithTitle:@"第三人称 FOV" value:self.thirdPersonFOV minimum:30.0 maximum:170.0 y:120.0 action:@selector(thirdPersonFOVChanged:)];
     [self addSliderWithTitle:@"速度倍率（待适配）" value:self.speedMultiplier minimum:0.5 maximum:3.0 y:186.0 action:@selector(speedChanged:)];
 
     UISwitch *routeSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 250.0, 0.0, 0.0)];
@@ -252,9 +250,8 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.panel.hidden = !self.panel.hidden;
 }
 
-- (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.cameraDistance, sender.value); }
-- (void)cameraDistanceChanged:(UISlider *)sender { self.cameraDistance = sender.value; [self saveSettings]; ApplyCameraFollow(sender.value, self.firstPersonFOV); }
-- (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; ApplyFieldOfView(sender.value); }
+- (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV); }
+- (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV); }
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; }
 - (void)routeChanged:(UISwitch *)sender { self.routeEnabled = sender.isOn; [self saveSettings]; }
 
