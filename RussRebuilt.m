@@ -147,6 +147,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 @property(nonatomic, assign) CGFloat speedMultiplier;
 @property(nonatomic, assign) CGFloat cameraDistance;
 @property(nonatomic, assign) BOOL routeEnabled;
+- (void)draggedFloatingBtn:(UIPanGestureRecognizer *)gesture;/* 拖拽方法声明*/
 @end
 /* 悬浮ui控制器*/
 @implementation RussOverlayController
@@ -168,6 +169,14 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
         [self.floatingButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
         [self.floatingButton addTarget:self action:@selector(togglePanel) forControlEvents:UIControlEventTouchUpInside];
         [window addSubview:self.floatingButton];
+
+        // ====== 新增拖拽手势，让按钮可以拖动 ======
+        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(draggedFloatingBtn:)];
+        pan.minimumNumberOfTouches = 1;
+        [self.floatingButton addGestureRecognizer:pan];
+
+
+
 
         [self buildPanelInWindow:window];
         ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV);
@@ -222,6 +231,31 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.panel.hidden = !self.panel.hidden;
 }
 /*点击隐藏悬浮 */
+
+
+- (void)draggedFloatingBtn:(UIPanGestureRecognizer *)gesture {
+    UIButton *btn = (UIButton *)gesture.view;
+    UIView *rootView = btn.superview;
+    CGPoint trans = [gesture translationInView:rootView];
+
+    if (gesture.state == UIGestureRecognizerStateChanged) {
+        // 实时移动中心点
+        btn.center = CGPointMake(btn.center.x + trans.x, btn.center.y + trans.y);
+        [gesture setTranslation:CGPointZero inView:rootView];
+
+        // 边界限制：不让按钮拖出屏幕外（可选，建议保留）
+        CGFloat w = UIScreen.mainScreen.bounds.size.width;
+        CGFloat h = UIScreen.mainScreen.bounds.size.height;
+        CGFloat half = btn.bounds.size.width / 2.0;
+        if (btn.center.x < half) btn.center = CGPointMake(half, btn.center.y);
+        if (btn.center.x > w - half) btn.center = CGPointMake(w - half, btn.center.y);
+        if (btn.center.y < half) btn.center = CGPointMake(half, btn.center.y);
+        if (btn.center.y > h - half) btn.center = CGPointMake(btn.center.x, h - half);
+    }
+}
+/*按键限制*/
+
+
 - (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV); }
 - (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV); }
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; }
