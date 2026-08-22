@@ -247,7 +247,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     center.x = MAX(safe.origin.x + halfWidth, MIN(safe.origin.x + safe.size.width - halfWidth, center.x));
     center.y = MAX(safe.origin.y + halfHeight, MIN(safe.origin.y + safe.size.height - halfHeight, center.y));
     view.center = center;
-    [gesture setTranslation:CGPointZero inView:container];
+    [gesture setTranslation:CGPointMake(0.0, 0.0) inView:container];
 }
 /*手指拖动悬浮按钮或面板 限制中心点不超出安全区域 */
 - (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV); }
