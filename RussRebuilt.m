@@ -154,12 +154,21 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 @property(nonatomic, assign) CGFloat speedMultiplier;
 @property(nonatomic, assign) CGFloat cameraDistance;
 @property(nonatomic, assign) BOOL routeEnabled;
+@property(nonatomic, strong) NSTimer *refreshTimer;
 @end
 
 @implementation RussOverlayController
 
 - (void)install {
     [self loadSettings];
+
+    if (self.refreshTimer == nil) {
+        self.refreshTimer = [NSTimer scheduledTimerWithTimeInterval:0.2
+                                                               target:self
+                                                             selector:@selector(reapplyRuntimeValues)
+                                                             userInfo:nil
+                                                              repeats:YES];
+    }
 
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
@@ -178,6 +187,21 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 
         [self buildPanelInWindow:window];
     });
+}
+
+- (void)reapplyRuntimeValues {
+    if (self.firstPersonFOV < 45.0 || self.cameraDistance < 0.5) {
+        return;
+    }
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [self reapplyRuntimeValues]; });
+        return;
+    }
+    ApplyCameraFollow(self.cameraDistance, self.firstPersonFOV);
+}
+
+- (void)dealloc {
+    [self.refreshTimer invalidate];
 }
 
 - (void)buildPanelInWindow:(UIWindow *)window {
