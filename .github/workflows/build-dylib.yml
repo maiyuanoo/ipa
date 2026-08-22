@@ -18,13 +18,15 @@ jobs:
             -isysroot "$SDKROOT" \
             -miphoneos-version-min=15.0 \
             -fPIC -dynamiclib -fvisibility=hidden \
-            russ_loader_test.c \
-            -Wl,-install_name,@rpath/RussTest.dylib \
-            -o RussTest.dylib
-          file RussTest.dylib
-          xcrun lipo -info RussTest.dylib
+            -fobjc-arc \
+            RussRebuilt.m \
+            -framework Foundation -framework UIKit \
+            -Wl,-install_name,@rpath/RussRebuilt.dylib \
+            -o RussRebuilt.dylib
+          file RussRebuilt.dylib
+          xcrun lipo -info RussRebuilt.dylib
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: RussTest-arm64
-          path: RussTest.dylib
+          name: RussRebuilt-arm64
+          path: RussRebuilt.dylib
