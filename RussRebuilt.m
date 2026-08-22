@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <dlfcn.h>
+#include <string.h>
 
 typedef struct Il2CppDomain Il2CppDomain;
 typedef struct Il2CppAssembly Il2CppAssembly;
@@ -20,6 +21,9 @@ typedef Il2CppAssembly **(*Il2CppDomainGetAssemblies)(const Il2CppDomain *domain
 typedef const Il2CppImage *(*Il2CppAssemblyGetImage)(const Il2CppAssembly *assembly);
 typedef void *(*Il2CppClassFromName)(const Il2CppImage *image, const char *namespaze, const char *name);
 typedef const MethodInfo *(*Il2CppClassGetMethodFromName)(void *klass, const char *name, int argumentsCount);
+typedef void *(*Il2CppClassGetFieldFromName)(void *klass, const char *name);
+typedef size_t (*Il2CppFieldGetOffset)(void *field);
+typedef void (*Il2CppFieldSetValue)(void *object, void *field, void *value);
 typedef Il2CppObject *(*Il2CppRuntimeInvoke)(const MethodInfo *method, void *object, void **parameters, Il2CppObject **exception);
 typedef void *(*Il2CppThreadAttach)(Il2CppDomain *domain);
 
@@ -28,6 +32,9 @@ static Il2CppDomainGetAssemblies gIl2CppDomainGetAssemblies;
 static Il2CppAssemblyGetImage gIl2CppAssemblyGetImage;
 static Il2CppClassFromName gIl2CppClassFromName;
 static Il2CppClassGetMethodFromName gIl2CppClassGetMethodFromName;
+static Il2CppClassGetFieldFromName gIl2CppClassGetFieldFromName;
+static Il2CppFieldGetOffset gIl2CppFieldGetOffset;
+static Il2CppFieldSetValue gIl2CppFieldSetValue;
 static Il2CppRuntimeInvoke gIl2CppRuntimeInvoke;
 static Il2CppThreadAttach gIl2CppThreadAttach;
 
@@ -41,12 +48,56 @@ static BOOL ResolveIl2Cpp(void) {
     gIl2CppAssemblyGetImage = (Il2CppAssemblyGetImage)dlsym(RTLD_DEFAULT, "il2cpp_assembly_get_image");
     gIl2CppClassFromName = (Il2CppClassFromName)dlsym(RTLD_DEFAULT, "il2cpp_class_from_name");
     gIl2CppClassGetMethodFromName = (Il2CppClassGetMethodFromName)dlsym(RTLD_DEFAULT, "il2cpp_class_get_method_from_name");
+    gIl2CppClassGetFieldFromName = (Il2CppClassGetFieldFromName)dlsym(RTLD_DEFAULT, "il2cpp_class_get_field_from_name");
+    gIl2CppFieldGetOffset = (Il2CppFieldGetOffset)dlsym(RTLD_DEFAULT, "il2cpp_field_get_offset");
+    gIl2CppFieldSetValue = (Il2CppFieldSetValue)dlsym(RTLD_DEFAULT, "il2cpp_field_set_value");
     gIl2CppRuntimeInvoke = (Il2CppRuntimeInvoke)dlsym(RTLD_DEFAULT, "il2cpp_runtime_invoke");
     gIl2CppThreadAttach = (Il2CppThreadAttach)dlsym(RTLD_DEFAULT, "il2cpp_thread_attach");
 
     return gIl2CppDomainGet != NULL && gIl2CppDomainGetAssemblies != NULL &&
         gIl2CppAssemblyGetImage != NULL && gIl2CppClassFromName != NULL &&
         gIl2CppClassGetMethodFromName != NULL && gIl2CppRuntimeInvoke != NULL;
+}
+
+static void *FindClass(const char *assemblyName, const char *namespaceName, const char *className) {
+    if (!ResolveIl2Cpp()) return NULL;
+    Il2CppDomain *domain = gIl2CppDomainGet();
+    if (domain == NULL) return NULL;
+    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
+    size_t count = 0;
+    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &count);
+    for (size_t i = 0; i < count; i++) {
+        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[i]);
+        const char *(*imageName)(const Il2CppImage *) = (const char *(*)(const Il2CppImage *))dlsym(RTLD_DEFAULT, "il2cpp_image_get_name");
+        if (imageName != NULL && strcmp(imageName(image), assemblyName) != 0) continue;
+        void *klass = gIl2CppClassFromName(image, namespaceName, className);
+        if (klass != NULL) return klass;
+    }
+    return NULL;
+}
+
+static void ApplyCameraFollow(float distance, float fov) {
+    void *klass = FindClass("UpdateScript_500.dll", "", "CameraFollow");
+    if (klass == NULL || gIl2CppClassGetMethodFromName == NULL) return;
+    const MethodInfo *getInstance = gIl2CppClassGetMethodFromName(klass, "get_instance", 0);
+    Il2CppObject *exception = NULL;
+    Il2CppObject *instance = getInstance ? gIl2CppRuntimeInvoke(getInstance, NULL, NULL, &exception) : NULL;
+    if (instance == NULL || exception != NULL) return;
+
+    const MethodInfo *setFov = gIl2CppClassGetMethodFromName(klass, "set_FOV", 1);
+    if (setFov != NULL) {
+        float fovValue = (float)MAX(45.0, MIN(150.0, fov));
+        void *args[] = { &fovValue };
+        gIl2CppRuntimeInvoke(setFov, instance, args, &exception);
+    }
+    if (gIl2CppClassGetFieldFromName == NULL || gIl2CppFieldSetValue == NULL) return;
+    void *distanceField = gIl2CppClassGetFieldFromName(klass, "UGC2Distance");
+    if (distanceField == NULL) distanceField = gIl2CppClassGetFieldFromName(klass, "Distance");
+    if (distanceField == NULL) distanceField = gIl2CppClassGetFieldFromName(klass, "Radius");
+    if (distanceField != NULL && gIl2CppFieldGetOffset(distanceField) != (size_t)-1) {
+        float distanceValue = (float)MAX(0.5, MIN(100.0, distance));
+        gIl2CppFieldSetValue(instance, distanceField, &distanceValue);
+    }
 }
 
 static void ApplyFieldOfView(CGFloat fieldOfView) {
@@ -101,6 +152,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 @property(nonatomic, assign) CGFloat firstPersonFOV;
 @property(nonatomic, assign) CGFloat thirdPersonFOV;
 @property(nonatomic, assign) CGFloat speedMultiplier;
+@property(nonatomic, assign) CGFloat cameraDistance;
 @property(nonatomic, assign) BOOL routeEnabled;
 @end
 
@@ -129,20 +181,20 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 }
 
 - (void)buildPanelInWindow:(UIWindow *)window {
-    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 130.0, 250.0, 300.0)];
+    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 130.0, 280.0, 300.0)];
     self.panel.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
     self.panel.layer.cornerRadius = 8.0;
     self.panel.hidden = YES;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 14.0, 210.0, 26.0)];
-    title.text = @"Russ Rebuilt";
+    title.text = @"视角调试";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [self.panel addSubview:title];
 
-    [self addSliderWithTitle:@"First-person FOV" value:self.firstPersonFOV minimum:45.0 maximum:120.0 y:54.0 action:@selector(firstPersonFOVChanged:)];
-    [self addSliderWithTitle:@"Third-person FOV" value:self.thirdPersonFOV minimum:45.0 maximum:120.0 y:120.0 action:@selector(thirdPersonFOVChanged:)];
-    [self addSliderWithTitle:@"Speed" value:self.speedMultiplier minimum:0.5 maximum:3.0 y:186.0 action:@selector(speedChanged:)];
+    [self addSliderWithTitle:@"视场角" value:self.firstPersonFOV minimum:45.0 maximum:150.0 y:54.0 action:@selector(firstPersonFOVChanged:)];
+    [self addSliderWithTitle:@"相机距离" value:self.cameraDistance minimum:0.5 maximum:100.0 y:120.0 action:@selector(cameraDistanceChanged:)];
+    [self addSliderWithTitle:@"速度倍率（待适配）" value:self.speedMultiplier minimum:0.5 maximum:3.0 y:186.0 action:@selector(speedChanged:)];
 
     UISwitch *routeSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 250.0, 0.0, 0.0)];
     routeSwitch.on = self.routeEnabled;
@@ -150,7 +202,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     [self.panel addSubview:routeSwitch];
 
     UILabel *routeLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 252.0, 150.0, 28.0)];
-    routeLabel.text = @"Route overlay";
+    routeLabel.text = @"路线显示（待适配）";
     routeLabel.textColor = UIColor.whiteColor;
     routeLabel.font = [UIFont systemFontOfSize:14.0];
     [self.panel addSubview:routeLabel];
@@ -176,7 +228,8 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.panel.hidden = !self.panel.hidden;
 }
 
-- (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; ApplyFieldOfView(sender.value); }
+- (void)firstPersonFOVChanged:(UISlider *)sender { self.firstPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.cameraDistance, sender.value); }
+- (void)cameraDistanceChanged:(UISlider *)sender { self.cameraDistance = sender.value; [self saveSettings]; ApplyCameraFollow(sender.value, self.firstPersonFOV); }
 - (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; ApplyFieldOfView(sender.value); }
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; }
 - (void)routeChanged:(UISwitch *)sender { self.routeEnabled = sender.isOn; [self saveSettings]; }
@@ -186,6 +239,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.firstPersonFOV = [defaults objectForKey:@"russ.firstFOV"] ? [defaults floatForKey:@"russ.firstFOV"] : 75.0;
     self.thirdPersonFOV = [defaults objectForKey:@"russ.thirdFOV"] ? [defaults floatForKey:@"russ.thirdFOV"] : 75.0;
     self.speedMultiplier = [defaults objectForKey:@"russ.speed"] ? [defaults floatForKey:@"russ.speed"] : 1.0;
+    self.cameraDistance = [defaults objectForKey:@"russ.distance"] ? [defaults floatForKey:@"russ.distance"] : 8.0;
     self.routeEnabled = [defaults boolForKey:@"russ.route"];
 }
 
@@ -194,6 +248,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     [defaults setFloat:self.firstPersonFOV forKey:@"russ.firstFOV"];
     [defaults setFloat:self.thirdPersonFOV forKey:@"russ.thirdFOV"];
     [defaults setFloat:self.speedMultiplier forKey:@"russ.speed"];
+    [defaults setFloat:self.cameraDistance forKey:@"russ.distance"];
     [defaults setBool:self.routeEnabled forKey:@"russ.route"];
 }
 
