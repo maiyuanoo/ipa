@@ -241,7 +241,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     if (gesture.state == UIGestureRecognizerStateChanged) {
         // 实时移动中心点
         btn.center = CGPointMake(btn.center.x + trans.x, btn.center.y + trans.y);
-        [gesture setTranslation:CGPointZero inView:rootView];
+      [g setTranslation:CGPointMake(0.0f,0.0f) inView:b.superview];
 
         // 边界限制：不让按钮拖出屏幕外（可选，建议保留）
         CGFloat w = UIScreen.mainScreen.bounds.size.width;
