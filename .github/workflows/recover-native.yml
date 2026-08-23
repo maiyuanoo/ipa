@@ -37,23 +37,15 @@ jobs:
         run: |
           mkdir -p analysis-output "$RUNNER_TEMP/ghidra-project"
           set +e
-          "$ANALYZER_PATH" "$RUNNER_TEMP/ghidra-project" RussRecovery \
-            -import analysis/input/RussOriginal.dylib \
-            -processor AARCH64:LE:64:v8A \
-            -scriptPath tools/ghidra \
-            -postScript RecoverNative.java analysis-output/RussNativeRecovered.c \
-            -deleteProject > analysis-output/russ-ghidra.log 2>&1
-          RUSS_STATUS=$?
-          "$ANALYZER_PATH" "$RUNNER_TEMP/ghidra-project" CiyueRecovery \
+          "$ANALYZER_PATH" "$RUNNER_TEMP/ghidra-project" CiyueDrawingRecovery \
             -import analysis/input/Ciyue0818.dylib \
             -processor AARCH64:LE:64:v8A \
             -scriptPath tools/ghidra \
-            -postScript RecoverNative.java analysis-output/CiyueNativeRecovered.c \
-            -deleteProject > analysis-output/ciyue-ghidra.log 2>&1
-          CIYUE_STATUS=$?
-          printf '%s\n%s\n' "$RUSS_STATUS" "$CIYUE_STATUS" > analysis-output/ghidra.exit-code
-          cat analysis-output/russ-ghidra.log
-          cat analysis-output/ciyue-ghidra.log
+            -postScript RecoverNative.java analysis-output/CiyueDrawingRecovered.c drawing \
+            -deleteProject > analysis-output/ciyue-drawing-ghidra.log 2>&1
+          CIYUE_DRAWING_STATUS=$?
+          printf '%s\n' "$CIYUE_DRAWING_STATUS" > analysis-output/ciyue-drawing-ghidra.exit-code
+          cat analysis-output/ciyue-drawing-ghidra.log
           exit 0
       - name: Publish recovery report
         run: |

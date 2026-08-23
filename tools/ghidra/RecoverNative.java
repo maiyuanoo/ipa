@@ -179,6 +179,15 @@ public class RecoverNative extends GhidraScript {
         }
     }
 
+    private boolean isDrawingFunction(Function function) {
+        long entryOffset = function.getEntryPoint().getOffset();
+        return entryOffset == 0x06e748L || entryOffset == 0x17332cL ||
+            entryOffset == 0x18c8dcL || entryOffset == 0x279198L ||
+            entryOffset == 0x27b1e4L || entryOffset == 0x27b354L ||
+            entryOffset == 0x27b618L || entryOffset == 0x27b804L ||
+            entryOffset == 0x27bad8L;
+    }
+
     private void addDirectCallees(Function function, Set<Long> offsets) {
         int added = 0;
         try {
@@ -223,9 +232,10 @@ public class RecoverNative extends GhidraScript {
     @Override
     public void run() throws Exception {
         String[] arguments = getScriptArgs();
-        if (arguments.length != 1) {
-            throw new IllegalArgumentException("Expected output file path");
+        if (arguments.length < 1 || arguments.length > 2) {
+            throw new IllegalArgumentException("Expected output file path and optional drawing mode");
         }
+        boolean drawingMode = arguments.length == 2 && arguments[1].equals("drawing");
 
         File outputFile = new File(arguments[0]);
         File parentDirectory = outputFile.getParentFile();
@@ -248,9 +258,10 @@ public class RecoverNative extends GhidraScript {
         while (functions.hasNext() && !monitor.isCancelled()) {
             Function function = functions.next();
             allFunctions.add(function);
-            if (isTargetFunction(function.getName()) || isRuntimeDispatcher(function) ||
+            if ((drawingMode && isDrawingFunction(function)) ||
+                (!drawingMode && (isTargetFunction(function.getName()) || isRuntimeDispatcher(function) ||
                 blockInvokeOffsets.contains(function.getEntryPoint().getOffset()) ||
-                evidenceReferenceOffsets.contains(function.getEntryPoint().getOffset())) {
+                evidenceReferenceOffsets.contains(function.getEntryPoint().getOffset()))) {
                 targetFunctions.add(function);
             }
         }
@@ -267,7 +278,7 @@ public class RecoverNative extends GhidraScript {
             }
             for (Function function : targetFunctions) {
                 String functionName = function.getName();
-                DecompileResults result = decompiler.decompileFunction(function, 120, monitor);
+                DecompileResults result = decompiler.decompileFunction(function, drawingMode ? 30 : 120, monitor);
                 if (!result.decompileCompleted() || result.getDecompiledFunction() == null) {
                     writer.printf("/* Unable to decompile %s at %s */%n%n", functionName, function.getEntryPoint());
                     continue;
