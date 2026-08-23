@@ -20,7 +20,7 @@ jobs:
             -fPIC -dynamiclib -fvisibility=hidden \
             -fobjc-arc \
             RussRebuilt.m \
-            -framework Foundation -framework UIKit \
+            -framework Foundation -framework UIKit -framework QuartzCore \
             -Wl,-install_name,@rpath/RussRebuilt.dylib \
             -o RussRebuilt.dylib
           file RussRebuilt.dylib

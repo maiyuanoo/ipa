@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>/*OC对象 nsuserdefault 通知*/
 #import <UIKit/UIKit.h>/* uiview uibutton uislider ui界面*/
+#import <QuartzCore/CADisplayLink.h>/*cadisplaylink每帧回调*/
 #import <dlfcn.h>/*动态找il2cpp原生c函数地址 */
 #include <string.h>
 #include <math.h>
@@ -327,93 +328,127 @@ static BOOL CountLineRendererStats(NSUInteger *outLines, NSUInteger *outPoints, 
     return YES;
 }
 /*linerenderer.get_positioncount统计线数和点数 */
-static BOOL UpdateESPVisual(float *outDistance, float *outScreenX, float *outScreenY, float *outScreenZ, BOOL includeInactive) {
-    if (outDistance) *outDistance = 0.0f;
-    if (outScreenX) *outScreenX = 0.0f;
-    if (outScreenY) *outScreenY = 0.0f;
-    if (outScreenZ) *outScreenZ = -1.0f;
-    if (!ResolveIl2Cpp() || gIl2CppObjectUnbox == NULL) return NO;
+static void *gCameraKlass;
+static void *gComponentKlass;
+static void *gTransformKlass;
+/*缓存camerA/component/transform类避免每帧重复查 */
+static BOOL EnsureUnityKlasses(void) {
+    if (gCameraKlass != NULL && gComponentKlass != NULL && gTransformKlass != NULL) return YES;
+    if (!ResolveIl2Cpp()) return NO;
     Il2CppDomain *domain = gIl2CppDomainGet();
     if (domain == NULL) return NO;
     if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
-
     size_t assemblyCount = 0;
     Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
-    void *componentKlass = NULL;
-    void *cameraKlass = NULL;
-    void *transformKlass = NULL;
     for (size_t index = 0; index < assemblyCount; index++) {
         const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
-        if (componentKlass == NULL) componentKlass = gIl2CppClassFromName(image, "UnityEngine", "Component");
-        if (cameraKlass == NULL) cameraKlass = gIl2CppClassFromName(image, "UnityEngine", "Camera");
-        if (transformKlass == NULL) transformKlass = gIl2CppClassFromName(image, "UnityEngine", "Transform");
-        if (componentKlass != NULL && cameraKlass != NULL && transformKlass != NULL) break;
+        if (gCameraKlass == NULL) gCameraKlass = gIl2CppClassFromName(image, "UnityEngine", "Camera");
+        if (gComponentKlass == NULL) gComponentKlass = gIl2CppClassFromName(image, "UnityEngine", "Component");
+        if (gTransformKlass == NULL) gTransformKlass = gIl2CppClassFromName(image, "UnityEngine", "Transform");
     }
-    if (componentKlass == NULL || cameraKlass == NULL || transformKlass == NULL) return NO;
+    return gCameraKlass != NULL && gComponentKlass != NULL && gTransformKlass != NULL;
+}
+/*遍历程序集找三个unity基类并缓存 */
 
-    const MethodInfo *getMain = gIl2CppClassGetMethodFromName(cameraKlass, "get_main", 0);
-    const MethodInfo *getTransform = gIl2CppClassGetMethodFromName(componentKlass, "get_transform", 0);
-    const MethodInfo *getPosition = gIl2CppClassGetMethodFromName(transformKlass, "get_position", 0);
-    const MethodInfo *worldToScreen = gIl2CppClassGetMethodFromName(cameraKlass, "WorldToScreenPoint", 1);
-    if (getMain == NULL || getTransform == NULL || getPosition == NULL || worldToScreen == NULL) return NO;
-
+static Il2CppObject *GetMainCameraObject(void) {
+    if (!EnsureUnityKlasses() || gIl2CppClassGetMethodFromName == NULL) return NULL;
+    const MethodInfo *getMain = gIl2CppClassGetMethodFromName(gCameraKlass, "get_main", 0);
+    if (getMain == NULL) return NULL;
     Il2CppObject *exception = NULL;
-    Il2CppObject *mainCam = gIl2CppRuntimeInvoke(getMain, NULL, NULL, &exception);
-    if (exception != NULL || mainCam == NULL) return NO;
-    exception = NULL;
-    Il2CppObject *mainTransform = gIl2CppRuntimeInvoke(getTransform, mainCam, NULL, &exception);
-    if (exception != NULL || mainTransform == NULL) return NO;
-    exception = NULL;
-    Il2CppObject *mainPosObj = gIl2CppRuntimeInvoke(getPosition, mainTransform, NULL, &exception);
-    if (exception != NULL || mainPosObj == NULL) return NO;
-    float *mainPos = (float *)gIl2CppObjectUnbox(mainPosObj);
-    float mx = mainPos[0], my = mainPos[1], mz = mainPos[2];
+    Il2CppObject *camera = gIl2CppRuntimeInvoke(getMain, NULL, NULL, &exception);
+    if (exception != NULL || camera == NULL) return NULL;
+    return camera;
+}
+/*camera.get_main拿主相机 */
 
+static BOOL GetObjectWorldPosition(Il2CppObject *component, float *outX, float *outY, float *outZ) {
+    if (component == NULL || gIl2CppObjectUnbox == NULL) return NO;
+    const MethodInfo *getTransform = gIl2CppClassGetMethodFromName(gComponentKlass, "get_transform", 0);
+    const MethodInfo *getPosition = gIl2CppClassGetMethodFromName(gTransformKlass, "get_position", 0);
+    if (getTransform == NULL || getPosition == NULL) return NO;
+    Il2CppObject *exception = NULL;
+    Il2CppObject *transform = gIl2CppRuntimeInvoke(getTransform, component, NULL, &exception);
+    if (exception != NULL || transform == NULL) return NO;
+    exception = NULL;
+    Il2CppObject *posObj = gIl2CppRuntimeInvoke(getPosition, transform, NULL, &exception);
+    if (exception != NULL || posObj == NULL) return NO;
+    float *pos = (float *)gIl2CppObjectUnbox(posObj);
+    if (outX) *outX = pos[0];
+    if (outY) *outY = pos[1];
+    if (outZ) *outZ = pos[2];
+    return YES;
+}
+/*component.get_transform transform.get_position unbox出vector3 */
+
+static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float wz, float *outX, float *outY, float *outZ) {
+    if (camera == NULL || gIl2CppObjectUnbox == NULL) return NO;
+    const MethodInfo *worldToScreen = gIl2CppClassGetMethodFromName(gCameraKlass, "WorldToScreenPoint", 1);
+    if (worldToScreen == NULL) return NO;
+    struct { float x, y, z; } world = { wx, wy, wz };
+    void *arguments[] = { &world };
+    Il2CppObject *exception = NULL;
+    Il2CppObject *screenObj = gIl2CppRuntimeInvoke(worldToScreen, camera, arguments, &exception);
+    if (exception != NULL || screenObj == NULL) return NO;
+    float *screen = (float *)gIl2CppObjectUnbox(screenObj);
+    if (outX) *outX = screen[0];
+    if (outY) *outY = screen[1];
+    if (outZ) *outZ = screen[2];
+    return YES;
+}
+/*camera.worldtoscreenpoint投影世界坐标到屏幕 */
+
+static NSUInteger CollectNearestObjects(Il2CppObject *camera, float *outWorld, float *outDistances, NSUInteger maxCount, float minDistance, BOOL includeInactive) {
+    if (outWorld == NULL || outDistances == NULL || maxCount == 0 || camera == NULL) return 0;
+    float camX = 0.0f, camY = 0.0f, camZ = 0.0f;
+    if (!GetObjectWorldPosition(camera, &camX, &camY, &camZ)) return 0;
     Il2CppArray *result = ScanObjectsByType("MonoBehaviour", includeInactive);
-    if (result == NULL) return NO;
+    if (result == NULL) return 0;
 
-    float minDist = FLT_MAX;
-    BOOL found = NO;
-    float nearestX = 0.0f, nearestY = 0.0f, nearestZ = 0.0f;
+    NSUInteger found = 0;
     for (uintptr_t index = 0; index < result->maxLength; index++) {
         Il2CppObject *behaviour = result->objects[index];
         if (behaviour == NULL) continue;
-        exception = NULL;
-        Il2CppObject *transform = gIl2CppRuntimeInvoke(getTransform, behaviour, NULL, &exception);
-        if (exception != NULL || transform == NULL) continue;
-        exception = NULL;
-        Il2CppObject *posObj = gIl2CppRuntimeInvoke(getPosition, transform, NULL, &exception);
-        if (exception != NULL || posObj == NULL) continue;
-        float *pos = (float *)gIl2CppObjectUnbox(posObj);
-        float dx = pos[0] - mx;
-        float dy = pos[1] - my;
-        float dz = pos[2] - mz;
+        float px = 0.0f, py = 0.0f, pz = 0.0f;
+        if (!GetObjectWorldPosition(behaviour, &px, &py, &pz)) continue;
+        float dx = px - camX;
+        float dy = py - camY;
+        float dz = pz - camZ;
         float dist = sqrtf(dx * dx + dy * dy + dz * dz);
-        if (dist < minDist) {
-            minDist = dist;
-            found = YES;
-            nearestX = pos[0];
-            nearestY = pos[1];
-            nearestZ = pos[2];
+        if (dist < minDistance) continue;
+        if (found < maxCount) {
+            NSUInteger slot = found;
+            found++;
+            while (slot > 0 && outDistances[slot - 1] > dist) {
+                outDistances[slot] = outDistances[slot - 1];
+                outWorld[slot * 3] = outWorld[(slot - 1) * 3];
+                outWorld[slot * 3 + 1] = outWorld[(slot - 1) * 3 + 1];
+                outWorld[slot * 3 + 2] = outWorld[(slot - 1) * 3 + 2];
+                slot--;
+            }
+            outDistances[slot] = dist;
+            outWorld[slot * 3] = px;
+            outWorld[slot * 3 + 1] = py;
+            outWorld[slot * 3 + 2] = pz;
+        } else if (dist < outDistances[maxCount - 1]) {
+            NSUInteger slot = maxCount - 1;
+            while (slot > 0 && outDistances[slot - 1] > dist) {
+                outDistances[slot] = outDistances[slot - 1];
+                outWorld[slot * 3] = outWorld[(slot - 1) * 3];
+                outWorld[slot * 3 + 1] = outWorld[(slot - 1) * 3 + 1];
+                outWorld[slot * 3 + 2] = outWorld[(slot - 1) * 3 + 2];
+                slot--;
+            }
+            outDistances[slot] = dist;
+            outWorld[slot * 3] = px;
+            outWorld[slot * 3 + 1] = py;
+            outWorld[slot * 3 + 2] = pz;
         }
     }
-    if (!found) return NO;
-    if (outDistance) *outDistance = minDist;
-
-    struct { float x, y, z; } worldPos = { nearestX, nearestY, nearestZ };
-    void *projectionArgs[] = { &worldPos };
-    exception = NULL;
-    Il2CppObject *screenObj = gIl2CppRuntimeInvoke(worldToScreen, mainCam, projectionArgs, &exception);
-    if (exception != NULL || screenObj == NULL) return YES;
-    float *screen = (float *)gIl2CppObjectUnbox(screenObj);
-    if (outScreenX) *outScreenX = screen[0];
-    if (outScreenY) *outScreenY = screen[1];
-    if (outScreenZ) *outScreenZ = screen[2];
-    return YES;
+    return found;
 }
-/*camera.get_main主相机 component.get_transform transform.get_position 扫描monobehaviour算vector3距离 camera.worldtoscreenpoint投影3d到屏幕 */
+/*扫描monobehaviour 按距主相机距离插入排序取最近maxcount个 跳过mindistance内(玩家自身) */
 @interface RussOverlayController : NSObject
-@property(nonatomic, strong) UIScrollView *panel;
+@property(nonatomic, strong) UIView *panel;
 @property(nonatomic, strong) UIButton *floatingButton;
 @property(nonatomic, assign) CGFloat firstPersonFOV;
 @property(nonatomic, assign) CGFloat thirdPersonFOV;
@@ -423,13 +458,13 @@ static BOOL UpdateESPVisual(float *outDistance, float *outScreenX, float *outScr
 @property(nonatomic, assign) BOOL componentsVisible;
 @property(nonatomic, strong) UILabel *componentsHint;
 @property(nonatomic, assign) BOOL espEnabled;
-@property(nonatomic, strong) NSTimer *espTimer;
+@property(nonatomic, strong) CADisplayLink *espDisplayLink;
 @property(nonatomic, strong) UILabel *espHint;
 @property(nonatomic, strong) UILabel *routeHint;
 @property(nonatomic, strong) UILabel *cameraHint;
 @property(nonatomic, assign) BOOL includeInactive;
 @property(nonatomic, strong) UIView *espOverlay;
-@property(nonatomic, strong) UIView *espMarker;
+@property(nonatomic, strong) NSMutableArray *espMarkers;
 @end
 /* 悬浮ui控制器*/
 @implementation RussOverlayController
@@ -476,102 +511,59 @@ static BOOL UpdateESPVisual(float *outDistance, float *outScreenX, float *outScr
 }
 /* ui初始化入口*/
 - (void)buildPanelInWindow:(UIWindow *)window {
-    CGFloat screenHeight = UIScreen.mainScreen.bounds.size.height;
-    CGFloat panelHeight = MIN(500.0, screenHeight - 130.0 - 60.0);
-    if (panelHeight < 360.0) panelHeight = 360.0;
-    self.panel = [[UIScrollView alloc] initWithFrame:CGRectMake(84.0, 130.0, 280.0, panelHeight)];
+    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 110.0, 280.0, 432.0)];
     self.panel.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
     self.panel.layer.cornerRadius = 8.0;
-    self.panel.scrollEnabled = YES;
-    self.panel.contentSize = CGSizeMake(280.0, 500.0);
-    self.panel.showsVerticalScrollIndicator = YES;
     self.panel.hidden = YES;
 
-    UIPanGestureRecognizer *panelDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleDrag:)];
-    UIView *dragHandle = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 280.0, 44.0)];
-    [dragHandle addGestureRecognizer:panelDrag];
-    [self.panel addSubview:dragHandle];
+    UIView *dragBar = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 280.0, 38.0)];
+    UIPanGestureRecognizer *panelDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanelDrag:)];
+    [dragBar addGestureRecognizer:panelDrag];
+    [self.panel addSubview:dragBar];
 
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 14.0, 210.0, 26.0)];
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 8.0, 210.0, 24.0)];
     title.text = @"视角调试";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:17.0];
     [self.panel addSubview:title];
 
-    [self addSliderWithTitle:@"第一人称 FOV" value:self.firstPersonFOV minimum:30.0 maximum:170.0 y:54.0 action:@selector(firstPersonFOVChanged:)];
-    [self addSliderWithTitle:@"第三人称 FOV" value:self.thirdPersonFOV minimum:30.0 maximum:170.0 y:120.0 action:@selector(thirdPersonFOVChanged:)];
-    [self addSliderWithTitle:@"速度倍率" value:self.speedMultiplier minimum:0.5 maximum:3.0 y:186.0 action:@selector(speedChanged:)];
+    [self addSliderWithTitle:@"第一人称 FOV" value:self.firstPersonFOV minimum:30.0 maximum:170.0 y:44.0 action:@selector(firstPersonFOVChanged:)];
+    [self addSliderWithTitle:@"第三人称 FOV" value:self.thirdPersonFOV minimum:30.0 maximum:170.0 y:98.0 action:@selector(thirdPersonFOVChanged:)];
+    [self addSliderWithTitle:@"速度倍率" value:self.speedMultiplier minimum:0.5 maximum:3.0 y:152.0 action:@selector(speedChanged:)];
 
-    UISwitch *routeSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 250.0, 0.0, 0.0)];
-    routeSwitch.on = self.routeEnabled;
-    [routeSwitch addTarget:self action:@selector(routeChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.panel addSubview:routeSwitch];
-
-    UILabel *routeLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 252.0, 150.0, 28.0)];
-    routeLabel.text = @"路线显示";
-    routeLabel.textColor = UIColor.whiteColor;
-    routeLabel.font = [UIFont systemFontOfSize:14.0];
-    [self.panel addSubview:routeLabel];
-
-    self.routeHint = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 280.0, 248.0, 14.0)];
-    self.routeHint.text = @"（LineRenderer 待扫描）";
-    self.routeHint.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
-    self.routeHint.font = [UIFont systemFontOfSize:11.0];
-    [self.panel addSubview:self.routeHint];
-
-    UISwitch *componentsSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 300.0, 0.0, 0.0)];
-    componentsSwitch.on = self.componentsVisible;
-    [componentsSwitch addTarget:self action:@selector(componentsChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.panel addSubview:componentsSwitch];
-
-    UILabel *componentsLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 302.0, 150.0, 28.0)];
-    componentsLabel.text = @"组件显隐";
-    componentsLabel.textColor = UIColor.whiteColor;
-    componentsLabel.font = [UIFont systemFontOfSize:14.0];
-    [self.panel addSubview:componentsLabel];
-
-    self.componentsHint = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 332.0, 248.0, 18.0)];
-    self.componentsHint.text = @"（FindObjectsOfType 待扫描）";
-    self.componentsHint.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
-    self.componentsHint.font = [UIFont systemFontOfSize:11.0];
-    [self.panel addSubview:self.componentsHint];
-
-    UISwitch *espSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 366.0, 0.0, 0.0)];
-    espSwitch.on = self.espEnabled;
-    [espSwitch addTarget:self action:@selector(espChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.panel addSubview:espSwitch];
-
-    UILabel *espLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 368.0, 150.0, 28.0)];
-    espLabel.text = @"ESP 距离";
-    espLabel.textColor = UIColor.whiteColor;
-    espLabel.font = [UIFont systemFontOfSize:14.0];
-    [self.panel addSubview:espLabel];
-
-    self.espHint = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 398.0, 248.0, 18.0)];
-    self.espHint.text = @"（关闭中）";
-    self.espHint.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
-    self.espHint.font = [UIFont systemFontOfSize:11.0];
-    [self.panel addSubview:self.espHint];
-
-    self.cameraHint = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 424.0, 248.0, 18.0)];
-    self.cameraHint.text = @"（FOV 待应用）";
-    self.cameraHint.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
-    self.cameraHint.font = [UIFont systemFontOfSize:11.0];
-    [self.panel addSubview:self.cameraHint];
-
-    UISwitch *inactiveSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 450.0, 0.0, 0.0)];
-    inactiveSwitch.on = self.includeInactive;
-    [inactiveSwitch addTarget:self action:@selector(inactiveChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.panel addSubview:inactiveSwitch];
-
-    UILabel *inactiveLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 452.0, 150.0, 28.0)];
-    inactiveLabel.text = @"包含隐藏对象";
-    inactiveLabel.textColor = UIColor.whiteColor;
-    inactiveLabel.font = [UIFont systemFontOfSize:14.0];
-    [self.panel addSubview:inactiveLabel];
+    [self addSwitchRowWithTitle:@"包含隐藏对象" on:self.includeInactive y:206.0 action:@selector(inactiveChanged:)];
+    [self addSwitchRowWithTitle:@"路线显示" on:self.routeEnabled y:248.0 action:@selector(routeChanged:)];
+    self.routeHint = [self addHintAtY:280.0 text:@"（LineRenderer 待扫描）"];
+    [self addSwitchRowWithTitle:@"组件显隐" on:self.componentsVisible y:298.0 action:@selector(componentsChanged:)];
+    self.componentsHint = [self addHintAtY:330.0 text:@"（待扫描）"];
+    [self addSwitchRowWithTitle:@"ESP 距离" on:self.espEnabled y:348.0 action:@selector(espChanged:)];
+    self.espHint = [self addHintAtY:380.0 text:@"（已关闭）"];
+    self.cameraHint = [self addHintAtY:402.0 text:@"（FOV 待应用）"];
     [window addSubview:self.panel];
 }
-/* 深色半透明面板 标题视角调试 调用addsliderwithtitle快速生成3个滑块第一人fov第三人fov 速度倍率 路线显示 面板加在顶层window*/
+/* 深色半透明面板 顶部38pt拖动条 紧凑布局无滚动 包含隐藏对象排第四位直接可见 面板加在顶层window*/
+- (void)addSwitchRowWithTitle:(NSString *)title on:(BOOL)on y:(CGFloat)y action:(SEL)action {
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(16.0, y, 190.0, 28.0)];
+    label.text = title;
+    label.textColor = UIColor.whiteColor;
+    label.font = [UIFont systemFontOfSize:14.0];
+    [self.panel addSubview:label];
+
+    UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectMake(213.0, y, 51.0, 28.0)];
+    sw.on = on;
+    [sw addTarget:self action:action forControlEvents:UIControlEventValueChanged];
+    [self.panel addSubview:sw];
+}
+/*开关行封装 标签+开关 */
+- (UILabel *)addHintAtY:(CGFloat)y text:(NSString *)text {
+    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(16.0, y, 248.0, 14.0)];
+    hint.text = text;
+    hint.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
+    hint.font = [UIFont systemFontOfSize:11.0];
+    [self.panel addSubview:hint];
+    return hint;
+}
+/*提示行封装 灰色小字 */
 - (void)addSliderWithTitle:(NSString *)title value:(CGFloat)value minimum:(CGFloat)minimum maximum:(CGFloat)maximum y:(CGFloat)y action:(SEL)action {
     UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(16.0, y, 210.0, 20.0)];
     label.text = title;
@@ -613,6 +605,28 @@ static BOOL UpdateESPVisual(float *outDistance, float *outScreenX, float *outScr
     [gesture setTranslation:CGPointMake(0.0, 0.0) inView:container];
 }
 /*手指拖动悬浮按钮或面板 限制中心点不超出安全区域 */
+- (void)handlePanelDrag:(UIPanGestureRecognizer *)gesture {
+    UIView *view = self.panel;
+    UIView *container = view.superview;
+    if (view == nil || container == nil) return;
+    CGPoint translation = [gesture translationInView:container];
+    CGPoint center = view.center;
+    center.x += translation.x;
+    center.y += translation.y;
+
+    CGFloat halfWidth = view.bounds.size.width * 0.5;
+    CGFloat halfHeight = view.bounds.size.height * 0.5;
+    CGRect safe = container.bounds;
+    if ([container isKindOfClass:[UIWindow class]]) {
+        UIWindow *window = (UIWindow *)container;
+        safe = UIEdgeInsetsInsetRect(window.bounds, window.safeAreaInsets);
+    }
+    center.x = MAX(safe.origin.x + halfWidth, MIN(safe.origin.x + safe.size.width - halfWidth, center.x));
+    center.y = MAX(safe.origin.y + halfHeight, MIN(safe.origin.y + safe.size.height - halfHeight, center.y));
+    view.center = center;
+    [gesture setTranslation:CGPointMake(0.0, 0.0) inView:container];
+}
+/*拖动面板顶部38pt拖动条 移动整个面板 不与滑块开关冲突 */
 - (void)firstPersonFOVChanged:(UISlider *)sender {
     self.firstPersonFOV = sender.value;
     [self saveSettings];
@@ -646,51 +660,88 @@ static BOOL UpdateESPVisual(float *outDistance, float *outScreenX, float *outScr
     self.espEnabled = sender.isOn;
     [self saveSettings];
     if (sender.isOn) {
+        [self ensureEspOverlay];
         self.espHint.text = @"（扫描中...）";
-        if (self.espOverlay == nil) {
-            UIWindow *window = self.floatingButton.window;
-            if (window != nil) {
-                self.espOverlay = [[UIView alloc] initWithFrame:window.bounds];
-                self.espOverlay.backgroundColor = [UIColor clearColor];
-                self.espOverlay.userInteractionEnabled = NO;
-                self.espMarker = [[UIView alloc] initWithFrame:CGRectMake(-100.0, -100.0, 24.0, 24.0)];
-                self.espMarker.backgroundColor = [UIColor colorWithRed:1.0 green:0.18 blue:0.18 alpha:0.85];
-                self.espMarker.layer.cornerRadius = 4.0;
-                self.espMarker.layer.borderColor = [UIColor whiteColor].CGColor;
-                self.espMarker.layer.borderWidth = 1.5;
-                self.espMarker.hidden = YES;
-                [self.espOverlay addSubview:self.espMarker];
-                [window addSubview:self.espOverlay];
-            }
-        }
-        self.espTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(updateESP) userInfo:nil repeats:YES];
+        self.espDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateESP)];
+        [self.espDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     } else {
-        [self.espTimer invalidate];
-        self.espTimer = nil;
+        [self.espDisplayLink invalidate];
+        self.espDisplayLink = nil;
         [self.espOverlay removeFromSuperview];
         self.espOverlay = nil;
-        self.espMarker = nil;
+        self.espMarkers = nil;
         self.espHint.text = @"（已关闭）";
     }
 }
+/*esp开关 on建overlay+8标记池 cadisplaylink每帧回调 off停帧移除overlay */
+- (void)ensureEspOverlay {
+    if (self.espOverlay != nil) return;
+    UIWindow *window = self.floatingButton.window;
+    if (window == nil) return;
+    self.espOverlay = [[UIView alloc] initWithFrame:window.bounds];
+    self.espOverlay.backgroundColor = [UIColor clearColor];
+    self.espOverlay.userInteractionEnabled = NO;
+    self.espMarkers = [NSMutableArray arrayWithCapacity:8];
+    for (NSInteger i = 0; i < 8; i++) {
+        UIView *marker = [self buildEspMarker];
+        [self.espMarkers addObject:marker];
+        [self.espOverlay addSubview:marker];
+    }
+    [window addSubview:self.espOverlay];
+}
+/*全屏透明overlay不挡点击 内含8个标记 */
+- (UIView *)buildEspMarker {
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(-100.0, -100.0, 64.0, 36.0)];
+    container.userInteractionEnabled = NO;
+    UIView *box = [[UIView alloc] initWithFrame:CGRectMake(21.0, 0.0, 22.0, 22.0)];
+    box.backgroundColor = [UIColor colorWithRed:1.0 green:0.18 blue:0.18 alpha:0.85];
+    box.layer.cornerRadius = 4.0;
+    box.layer.borderColor = [UIColor whiteColor].CGColor;
+    box.layer.borderWidth = 1.5;
+    [container addSubview:box];
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0.0, 24.0, 64.0, 12.0)];
+    label.tag = 101;
+    label.font = [UIFont systemFontOfSize:10.0];
+    label.textColor = UIColor.whiteColor;
+    label.textAlignment = NSTextAlignmentCenter;
+    label.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.55];
+    [container addSubview:label];
+    container.hidden = YES;
+    return container;
+}
+/*单个esp标记 22x22红框白边+距离文字 */
 - (void)updateESP {
-    float distance = 0.0f, screenX = 0.0f, screenY = 0.0f, screenZ = -1.0f;
-    if (UpdateESPVisual(&distance, &screenX, &screenY, &screenZ, self.includeInactive)) {
-        self.espHint.text = [NSString stringWithFormat:@"（最近 %.1f 米）", distance];
-        if (self.espMarker != nil) {
-            if (screenZ > 0.0f) {
-                CGFloat screenH = self.espOverlay.superview.bounds.size.height;
-                self.espMarker.frame = CGRectMake((CGFloat)screenX - 12.0, screenH - (CGFloat)screenY - 12.0, 24.0, 24.0);
-                self.espMarker.hidden = NO;
+    if (!self.espEnabled || self.espOverlay == nil || self.espMarkers == nil) return;
+    NSUInteger shown = 0;
+    Il2CppObject *camera = GetMainCameraObject();
+    if (camera != NULL) {
+        float world[24];
+        float distances[8];
+        NSUInteger count = CollectNearestObjects(camera, world, distances, 8, 3.0f, self.includeInactive);
+        CGFloat screenW = self.espOverlay.bounds.size.width;
+        CGFloat screenH = self.espOverlay.bounds.size.height;
+        for (NSUInteger i = 0; i < self.espMarkers.count; i++) {
+            UIView *marker = self.espMarkers[i];
+            float sx = 0.0f, sy = 0.0f, sz = -1.0f;
+            if (i < count && ProjectWorldToScreen(camera, world[i * 3], world[i * 3 + 1], world[i * 3 + 2], &sx, &sy, &sz) && sz > 0.0f && sx >= 0.0f && sx <= screenW) {
+                marker.frame = CGRectMake((CGFloat)sx - 32.0, screenH - (CGFloat)sy - 18.0, 64.0, 36.0);
+                UILabel *label = (UILabel *)[marker viewWithTag:101];
+                if (label != nil) label.text = [NSString stringWithFormat:@"%.0f米", distances[i]];
+                marker.hidden = NO;
+                shown++;
             } else {
-                self.espMarker.hidden = YES;
+                marker.hidden = YES;
             }
         }
     } else {
-        self.espHint.text = @"（未找到对象）";
-        if (self.espMarker != nil) self.espMarker.hidden = YES;
+        for (NSUInteger i = 0; i < self.espMarkers.count; i++) {
+            UIView *marker = self.espMarkers[i];
+            marker.hidden = YES;
+        }
     }
+    self.espHint.text = shown > 0 ? [NSString stringWithFormat:@"（实时标记 %lu 个）", (unsigned long)shown] : @"（范围内无对象）";
 }
+/*每帧 取主相机 collect最近8个(跳过3米内自身) 逐个worldtoscreen投影 移动标记+更新距离文字 镜头后(z<=0)或出屏隐藏 */
 - (void)inactiveChanged:(UISwitch *)sender {
     self.includeInactive = sender.isOn;
     [self saveSettings];
