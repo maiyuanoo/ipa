@@ -32,7 +32,7 @@ jobs:
           echo "ANALYZER_PATH=$ANALYZER_PATH" >> "$GITHUB_ENV"
       - name: Recover native helper pseudocode
         run: |
-          mkdir -p analysis-output
+          mkdir -p analysis-output "$RUNNER_TEMP/ghidra-project"
           set +e
           "$ANALYZER_PATH" "$RUNNER_TEMP/ghidra-project" RussRecovery \
             -import analysis/input/RussOriginal.dylib \
