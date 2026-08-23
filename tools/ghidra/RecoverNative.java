@@ -1,5 +1,6 @@
 import java.io.File;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -15,6 +16,7 @@ import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.DataIterator;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceIterator;
+import ghidra.program.model.address.Address;
 
 public class RecoverNative extends GhidraScript {
     private static final int MAX_EVIDENCE_FUNCTIONS = 96;
@@ -97,31 +99,68 @@ public class RecoverNative extends GhidraScript {
 
     private Set<Long> getEvidenceReferenceOffsets() {
         Set<String> evidenceStrings = getEvidenceStrings();
-
         Set<Long> offsets = new HashSet<Long>();
+
+        // Mach-O 的 __cstring 经常未被 Ghidra 定义为 Data，因此先直接扫描字节。
+        for (String evidence : evidenceStrings) {
+            addEvidenceReferences(evidence, offsets);
+            if (offsets.size() >= MAX_EVIDENCE_FUNCTIONS) return offsets;
+        }
+
+        // 保留已定义 Data 的处理，用于 Russ 样本中已正确导入的字符串。
         DataIterator dataIterator = currentProgram.getListing().getDefinedData(true);
         while (dataIterator.hasNext() && !monitor.isCancelled()) {
             Data data = dataIterator.next();
             Object value = data.getValue();
             if (!(value instanceof String) || !evidenceStrings.contains((String)value)) continue;
-
-            ReferenceIterator references = currentProgram.getReferenceManager().getReferencesTo(data.getAddress());
-            while (references.hasNext()) {
-                Reference reference = references.next();
-                Function function = currentProgram.getFunctionManager().getFunctionContaining(reference.getFromAddress());
-                if (function == null) continue;
-                offsets.add(function.getEntryPoint().getOffset());
-                if (offsets.size() >= MAX_EVIDENCE_FUNCTIONS) return offsets;
-
-                ReferenceIterator callers = currentProgram.getReferenceManager().getReferencesTo(function.getEntryPoint());
-                while (callers.hasNext()) {
-                    Function caller = currentProgram.getFunctionManager().getFunctionContaining(callers.next().getFromAddress());
-                    if (caller != null) offsets.add(caller.getEntryPoint().getOffset());
-                    if (offsets.size() >= MAX_EVIDENCE_FUNCTIONS) return offsets;
-                }
-            }
+            addFunctionAndCallerReferences(data.getAddress(), offsets, true);
+            if (offsets.size() >= MAX_EVIDENCE_FUNCTIONS) return offsets;
         }
         return offsets;
+    }
+
+    private void addEvidenceReferences(String evidence, Set<Long> offsets) {
+        Memory memory = currentProgram.getMemory();
+        byte[] bytes = evidence.getBytes(StandardCharsets.UTF_8);
+        Address searchStart = currentProgram.getMinAddress();
+        while (searchStart != null && !monitor.isCancelled() && offsets.size() < MAX_EVIDENCE_FUNCTIONS) {
+            Address match;
+            try {
+                match = memory.findBytes(searchStart, bytes, null, true, monitor);
+            } catch (Exception exception) {
+                return;
+            }
+            if (match == null) return;
+            addFunctionAndCallerReferences(match, offsets, false);
+            try {
+                searchStart = match.add(1);
+            } catch (Exception exception) {
+                return;
+            }
+        }
+    }
+
+    private void addFunctionAndCallerReferences(Address address, Set<Long> offsets, boolean followDataReferences) {
+        ReferenceIterator references = currentProgram.getReferenceManager().getReferencesTo(address);
+        while (references.hasNext() && offsets.size() < MAX_EVIDENCE_FUNCTIONS) {
+            Reference reference = references.next();
+            Function function = currentProgram.getFunctionManager().getFunctionContaining(reference.getFromAddress());
+            if (function != null) {
+                offsets.add(function.getEntryPoint().getOffset());
+                addCallers(function, offsets);
+            } else if (!followDataReferences) {
+                // Objective-C 常量字符串先由 __cfstring 数据项引用，再由代码引用该数据项。
+                addFunctionAndCallerReferences(reference.getFromAddress(), offsets, true);
+            }
+        }
+    }
+
+    private void addCallers(Function function, Set<Long> offsets) {
+        ReferenceIterator callers = currentProgram.getReferenceManager().getReferencesTo(function.getEntryPoint());
+        while (callers.hasNext() && offsets.size() < MAX_EVIDENCE_FUNCTIONS) {
+            Function caller = currentProgram.getFunctionManager().getFunctionContaining(callers.next().getFromAddress());
+            if (caller != null) offsets.add(caller.getEntryPoint().getOffset());
+        }
     }
 
     private Set<String> getEvidenceStrings() {
