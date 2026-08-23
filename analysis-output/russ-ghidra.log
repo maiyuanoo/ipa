@@ -5,14 +5,14 @@ INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1
 INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
 INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1107 ms) (ClassSearcher)  
+INFO  Class search complete (1145 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
 INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
 INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
-INFO  Headless startup complete (6057 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (8709 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
 WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
@@ -102,42 +102,42 @@ WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.
 WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::length_error::vtable (DemangledAddressTable)  
 INFO  -----------------------------------------------------
     AARCH64 ELF PLT Thunks                     0.000 secs
-    ASCII Strings                              0.402 secs
-    Apply Data Archives                        0.303 secs
-    Basic Constant Reference Analyzer          2.620 secs
-    CFStrings                                  0.033 secs
-    Call Convention ID                         3.038 secs
-    Call-Fixup Installer                       0.025 secs
-    Create Address Tables                      0.060 secs
-    Create Address Tables - One Time           0.056 secs
-    Create Function                            0.188 secs
-    Data Reference                             0.294 secs
-    Decompiler Switch Analysis                 9.873 secs
-    Decompiler Switch Analysis - One Time      3.321 secs
-    Demangler GNU                              0.215 secs
-    Demangler Swift                           27.290 secs
-    Disassemble                                0.474 secs
-    Disassemble Entry Points                   0.092 secs
-    Embedded Media                             0.575 secs
-    External Entry References                  0.001 secs
-    Function ID                                0.020 secs
-    Function Start Search                      0.081 secs
-    Function Start Search After Code           0.028 secs
+    ASCII Strings                              0.426 secs
+    Apply Data Archives                        0.341 secs
+    Basic Constant Reference Analyzer          2.428 secs
+    CFStrings                                  0.026 secs
+    Call Convention ID                         3.056 secs
+    Call-Fixup Installer                       0.022 secs
+    Create Address Tables                      0.063 secs
+    Create Address Tables - One Time           0.052 secs
+    Create Function                            0.209 secs
+    Data Reference                             0.284 secs
+    Decompiler Switch Analysis                 9.709 secs
+    Decompiler Switch Analysis - One Time      3.484 secs
+    Demangler GNU                              0.224 secs
+    Demangler Swift                           24.784 secs
+    Disassemble                                0.480 secs
+    Disassemble Entry Points                   0.060 secs
+    Embedded Media                             0.526 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.023 secs
+    Function Start Search                      0.085 secs
+    Function Start Search After Code           0.030 secs
     Function Start Search After Data           0.025 secs
-    Function Start Search delayed - One Time   0.022 secs
-    Mach-O Function Starts                     0.124 secs
-    Non-Returning Functions - Discovered       0.147 secs
-    Non-Returning Functions - Known            0.008 secs
-    Objective-C Message Analyzer              12.726 secs
-    Objective-C Type Metadata Analyzer         1.598 secs
-    Reference                                  0.225 secs
-    Shared Return Calls                        0.159 secs
-    Stack                                      2.399 secs
-    Subroutine References                      0.202 secs
-    Subroutine References - One Time           0.003 secs
-    Swift Type Metadata Analyzer               0.068 secs
+    Function Start Search delayed - One Time   0.036 secs
+    Mach-O Function Starts                     0.125 secs
+    Non-Returning Functions - Discovered       0.181 secs
+    Non-Returning Functions - Known            0.007 secs
+    Objective-C Message Analyzer              12.530 secs
+    Objective-C Type Metadata Analyzer         1.515 secs
+    Reference                                  0.246 secs
+    Shared Return Calls                        0.186 secs
+    Stack                                      2.156 secs
+    Subroutine References                      0.203 secs
+    Subroutine References - One Time           0.001 secs
+    Swift Type Metadata Analyzer               0.057 secs
 -----------------------------------------------------
-     Total Time   66 secs
+     Total Time   63 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
