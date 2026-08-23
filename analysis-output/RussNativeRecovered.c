@@ -2699,4 +2699,196 @@ undefined8 FUN_00019de8(void)
 
 
 
-/* Recovered functions: 23 */
+/* FUN_0001a0f4 at 0001a0f4 */
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 FUN_0001a0f4(double param_1,ulong param_2)
+
+{
+  int iVar1;
+  ulong uVar2;
+  byte bVar3;
+  ulong local_58;
+  
+  uVar2 = DAT_000e67f0;
+  if ((((_DAT_000e6808 & 1) != 0) || ((_DAT_000e6808 & 0x100) != 0)) &&
+     (DAT_000e67e0 != 0 && DAT_000e67f0 != 0)) {
+    local_58 = 0;
+    iVar1 = FUN_0001a400(DAT_000e67e0,&local_58,8);
+    if (((iVar1 != 0 && local_58 == uVar2) && (local_58 = 0, DAT_000e67e0 != 0)) &&
+       ((iVar1 = FUN_0001a400(DAT_000e67e0 + 0x10,&local_58,8), iVar1 != 0 &&
+        ((0xffff < local_58 && (local_58 == DAT_000e67e8)))))) {
+      if ((DAT_000e72b0 <= 0.0) || (param_1 < DAT_000e72b0)) {
+        DAT_000e72b0 = param_1;
+      }
+      if ((DAT_000e6808 == '\x01') &&
+         (iVar1 = FUN_0001a330(_DAT_000e6800 & 0xffffffff,DAT_000e67e0,_DAT_000e67f8 & 0xffffffff),
+         iVar1 != 0)) {
+        _DAT_000e6808 = _DAT_000e6808 & 0xff00;
+      }
+      if (DAT_000e6809 == '\x01') {
+        uVar2 = FUN_0001a330(DAT_000e6804,DAT_000e67e0,DAT_000e67fc);
+        if ((uVar2 & 1) == 0) {
+          bVar3 = DAT_000e6809;
+        }
+        else {
+          _DAT_000e6808 = _DAT_000e6808 & 0xff;
+          bVar3 = 0;
+        }
+      }
+      else {
+        bVar3 = 0;
+      }
+      if (((param_2 & 1) == 0) && (((DAT_000e6808 | bVar3) & 1) != 0)) {
+        if (param_1 < DAT_000e72b0) {
+          return 0;
+        }
+        if (param_1 - DAT_000e72b0 < 2.0) {
+          return 0;
+        }
+      }
+    }
+  }
+  DAT_000e72b0 = 0.0;
+  _DAT_000e6808 = 0;
+  _DAT_000e6800 = DAT_000d70d0;
+  _DAT_000e67f8 = 0xffffffffffffffff;
+  DAT_000e67f0 = 0;
+  DAT_000e67e8 = 0;
+  DAT_000e67e0 = 0;
+  return 1;
+}
+
+
+
+/* FUN_0001a4e8 at 0001a4e8 */
+
+ulong FUN_0001a4e8(long param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  ulong uVar3;
+  ulong local_28;
+  
+  uVar3 = FUN_0001a3b0();
+  if ((int)uVar3 != 0) {
+    local_28 = 0;
+    if (param_1 == 0) {
+      uVar3 = 0;
+    }
+    else {
+      uVar2 = FUN_0001a400(param_1 + 0x10,&local_28,8);
+      uVar1 = 0;
+      if ((local_28 & 0xffffffffffff0000) != 0) {
+        uVar1 = uVar2;
+      }
+      uVar3 = (ulong)uVar1;
+    }
+  }
+  return uVar3;
+}
+
+
+
+/* FUN_0001a5b0 at 0001a5b0 */
+
+void FUN_0001a5b0(long param_1,int param_2)
+
+{
+  long lVar1;
+  long lVar2;
+  undefined8 uVar3;
+  char local_41;
+  long local_40;
+  long local_38;
+  
+  local_38 = *(long *)PTR____stack_chk_guard_000e0498;
+  uVar3 = 0;
+  if (param_1 != 0) {
+    if (DAT_000e7368 == 0) {
+      DAT_000e7368 = FUN_0001ab08("UnityEngine","Object");
+    }
+    if (DAT_000e7370 == 0) {
+      DAT_000e7370 = FUN_0001ab08("UnityEngine","Resources");
+    }
+    if (DAT_000e7360 == 0 && DAT_000e7368 != 0) {
+      if (DAT_000e7308 == (code *)0x0) {
+        DAT_000e7360 = 0;
+      }
+      else {
+        DAT_000e7360 = (*DAT_000e7308)(DAT_000e7368,"FindObjectsOfType",1);
+      }
+    }
+    lVar2 = DAT_000e7358;
+    if (((DAT_000e7358 == 0) && (DAT_000e7370 != 0)) && (lVar2 = 0, DAT_000e7308 != (code *)0x0)) {
+      lVar2 = (*DAT_000e7308)(DAT_000e7370,"FindObjectsOfTypeAll",1);
+    }
+    DAT_000e7358 = lVar2;
+    if (DAT_000e7360 == 0 && DAT_000e7358 == 0) {
+      uVar3 = 0;
+    }
+    else {
+      lVar2 = DAT_000e7360;
+      lVar1 = DAT_000e7358;
+      if (param_2 == 0) {
+        lVar2 = DAT_000e7358;
+        lVar1 = DAT_000e7360;
+      }
+      if (lVar1 != 0) {
+        lVar2 = lVar1;
+      }
+      uVar3 = 0;
+      if (lVar2 != 0) {
+        local_41 = '\0';
+        local_40 = param_1;
+        uVar3 = FUN_0001a540(lVar2,0,&local_40,&local_41);
+        if (local_41 == '\0') {
+          uVar3 = 0;
+        }
+      }
+    }
+  }
+  if (*(long *)PTR____stack_chk_guard_000e0498 != local_38) {
+                    /* WARNING: Subroutine does not return */
+    ___stack_chk_fail(uVar3);
+  }
+  return;
+}
+
+
+
+/* FUN_0001a730 at 0001a730 */
+
+undefined4 FUN_0001a730(long param_1)
+
+{
+  byte bVar1;
+  ulong uVar2;
+  undefined4 uVar3;
+  ulong local_28;
+  
+  local_28 = 0;
+  if (((param_1 == 0) || (uVar2 = FUN_0001a400(param_1,&local_28,8), (uVar2 & 1) == 0)) ||
+     (local_28 < 0x10000)) {
+    uVar3 = 0;
+  }
+  else {
+    local_28 = 0;
+    bVar1 = FUN_0001a400(param_1 + 0x18,&local_28,8);
+    uVar2 = local_28 - 1;
+    if (0xf < local_28) {
+      local_28 = 0x10;
+    }
+    uVar3 = (undefined4)local_28;
+    if ((bVar1 & uVar2 < 0x100000) == 0) {
+      uVar3 = 0;
+    }
+  }
+  return uVar3;
+}
+
+
+
+/* Recovered functions: 27 */
