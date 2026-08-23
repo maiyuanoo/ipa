@@ -3,6 +3,7 @@
 #import <QuartzCore/CADisplayLink.h>/*cadisplaylink每帧回调*/
 #import <dlfcn.h>/*动态找il2cpp原生c函数地址 */
 #import <mach-o/dyld.h>/*枚举已加载镜像找unityframework完整路径*/
+#import <mach/mach.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -66,6 +67,7 @@ static Il2CppGCHandleGetTarget gIl2CppGCHandleGetTarget;
 static Il2CppGCHandleFree gIl2CppGCHandleFree;
 
 static void *gUnityFrameworkHandle;
+static uintptr_t gUnityFrameworkBase;
 static BOOL gIl2CppSymbolsResolved;
 static BOOL gIl2CppThreadReady;
 /*unityframework句柄 符号解析完成标记 主线程attach标记*/
@@ -93,6 +95,15 @@ static BOOL ResolveIl2CppSymbols(void) {
     }
     if (gUnityFrameworkHandle == NULL) {
         gUnityFrameworkHandle = dlopen("UnityFramework.framework/UnityFramework", RTLD_LAZY | RTLD_GLOBAL);
+    }
+    if (gUnityFrameworkBase == 0) {
+        uint32_t imageCount = _dyld_image_count();
+        for (uint32_t i = 0; i < imageCount; i++) {
+            const char *name = _dyld_get_image_name(i);
+            if (name == NULL || strstr(name, "UnityFramework.framework/UnityFramework") == NULL) continue;
+            gUnityFrameworkBase = (uintptr_t)_dyld_get_image_header(i);
+            break;
+        }
     }
 
     void *base = gUnityFrameworkHandle != NULL ? gUnityFrameworkHandle : RTLD_DEFAULT;
@@ -436,9 +447,66 @@ static const MethodInfo *gGetFogDensityMethod;
 static BOOL gFogSaved;
 static BOOL gOriginalFog;
 static float gOriginalFogDensity = 0.01f;
-/*rendersettings缓存+原始雾效保存还原*/
+static uintptr_t gFogStateAddresses[2];
+static uint32_t gFogStateOriginalValues[2];
+static BOOL gNativeFogStateSaved;
+/*RenderSettings 后备路径和 Russ 原版 Unity 内存状态缓存*/
+
+static BOOL ReadProcessMemory(uintptr_t address, void *output, size_t length) {
+    if (address < 0x10000 || output == NULL || length == 0) return NO;
+    mach_vm_size_t copied = 0;
+    kern_return_t result = mach_vm_read_overwrite(mach_task_self(), (mach_vm_address_t)address,
+                                                  (mach_vm_size_t)length, (mach_vm_address_t)output, &copied);
+    return result == KERN_SUCCESS && copied == length;
+}
+
+static BOOL WriteProcessMemory(uintptr_t address, const void *input, size_t length) {
+    if (address < 0x10000 || input == NULL || length == 0) return NO;
+    return mach_vm_write(mach_task_self(), (mach_vm_address_t)address,
+                         (vm_offset_t)input, (mach_msg_type_number_t)length) == KERN_SUCCESS;
+}
+
+static BOOL ResolveUnityPointerChain(const uintptr_t *offsets, size_t count, uintptr_t *result) {
+    if (gUnityFrameworkBase == 0 || offsets == NULL || count == 0 || result == NULL) return NO;
+    uintptr_t address = gUnityFrameworkBase + offsets[0];
+    for (size_t index = 1; index < count; index++) {
+        uintptr_t pointer = 0;
+        if (!ReadProcessMemory(address, &pointer, sizeof(pointer)) || pointer < 0x10000) return NO;
+        address = pointer + offsets[index];
+    }
+    *result = address;
+    return YES;
+}
+
+static BOOL ApplyRussNativeFogRemoval(BOOL remove) {
+    static const uintptr_t kFogChains[2][8] = {
+        { 0x66138f8, 0x1a0, 0xb8, 0x160, 0x150, 0x18, 0x30, 0x35c },
+        { 0x660ba38, 0x30, 0x8, 0x678, 0x2c4, 0, 0, 0 }
+    };
+    static const size_t kFogChainLengths[2] = { 8, 5 };
+
+    for (size_t index = 0; index < 2; index++) {
+        uintptr_t address = 0;
+        if (!ResolveUnityPointerChain(kFogChains[index], kFogChainLengths[index], &address)) return NO;
+        if (!gNativeFogStateSaved || gFogStateAddresses[index] != address) {
+            uint32_t original = 0;
+            if (!ReadProcessMemory(address, &original, sizeof(original))) return NO;
+            gFogStateAddresses[index] = address;
+            gFogStateOriginalValues[index] = original;
+        }
+    }
+    gNativeFogStateSaved = YES;
+
+    for (size_t index = 0; index < 2; index++) {
+        uint32_t value = remove ? 0 : gFogStateOriginalValues[index];
+        if (!WriteProcessMemory(gFogStateAddresses[index], &value, sizeof(value))) return NO;
+    }
+    return YES;
+}
+/*原版 FUN_00019afc：两条 UnityFramework 指针链各写4字节，关闭时恢复首次读取值*/
 
 static BOOL ApplyFogRemoval(BOOL remove) {
+    if (ResolveIl2CppSymbols() && ApplyRussNativeFogRemoval(remove)) return YES;
     if (!EnsureIl2CppThread()) return NO;
     if (gRenderSettingsKlass == NULL) {
         gRenderSettingsKlass = FindClassInAllAssemblies("UnityEngine", "RenderSettings");
@@ -476,7 +544,7 @@ static BOOL ApplyFogRemoval(BOOL remove) {
     }
     return exception == NULL;
 }
-/*去雾:首次保存原fog/density 开=set_fog(false)+density(0) 关=还原原值 dump.cs:516027/516057*/
+/*优先使用 Russ 原版内存状态链；仅在链不匹配当前 UnityFramework 时回退 RenderSettings*/
 
 static void *gLightKlass;
 static void *gLightTypeHandleKlass;
