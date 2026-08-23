@@ -11,9 +11,9 @@ import ghidra.program.model.listing.FunctionIterator;
 
 public class RecoverNative extends GhidraScript {
     private boolean isTargetFunction(String functionName) {
-        return functionName.startsWith("YYGameMemory") ||
-            functionName.startsWith("YYUnity") ||
-            functionName.startsWith("YYIslandRoute") ||
+        return functionName.contains("YYGameMemory") ||
+            functionName.contains("YYUnity") ||
+            functionName.contains("YYIslandRoute") ||
             functionName.equals("RussIslandRouteOverlaySetEnabled") ||
             functionName.equals("RussIslandRouteOverlayShutdown");
     }
