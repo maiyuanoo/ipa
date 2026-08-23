@@ -249,6 +249,7 @@ static Il2CppArray *ScanObjectsByType(const char *targetClassName, BOOL includeI
     Il2CppObject *typeObject = GetTypeObjectForClass(targetKlass);
     if (typeObject == NULL) return NULL;
 
+
     Il2CppObject *exception = NULL;
     void *arguments[] = { typeObject };
     return (Il2CppArray *)gIl2CppRuntimeInvoke(findMethod, NULL, arguments, &exception);
