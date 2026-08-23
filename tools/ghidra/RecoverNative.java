@@ -63,6 +63,12 @@ public class RecoverNative extends GhidraScript {
             entryOffset == 0x0868bcL || entryOffset == 0x086934L ||
             entryOffset == 0x086eb4L || entryOffset == 0x086fa4L ||
             entryOffset == 0x08701cL ||
+            // 辞月 Metal 叠加层：相机位置、文本发射及基础图元批处理。
+            entryOffset == 0x06e748L || entryOffset == 0x17332cL ||
+            entryOffset == 0x18c8dcL || entryOffset == 0x279198L ||
+            entryOffset == 0x27b1e4L || entryOffset == 0x27b354L ||
+            entryOffset == 0x27b618L || entryOffset == 0x27b804L ||
+            entryOffset == 0x27bad8L ||
             entryOffset == 0x17720L || entryOffset == 0x195a8L ||
             entryOffset == 0x19624L || entryOffset == 0x19894L ||
             entryOffset == 0x19afcL || entryOffset == 0x19cf0L ||
