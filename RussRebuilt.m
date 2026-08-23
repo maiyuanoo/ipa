@@ -813,34 +813,27 @@ static NSUInteger ApplyDemagnetization(float strengthPercent) {
 /*rigidbody.set_drag/set_angulardrag 消磁强度按百分比线性映射 关时恢复unity默认值*/
 
 static void *gFindPathLineCtrlKlass;
-static void *gRendererKlass;
-static const MethodInfo *gSetEnabledMethod;
+static void *gLineRendererKlass;
 static void *gRouteLineRendererField;
 static void *gRoutePointsListField;
-/*路线控制器/字段/renderer缓存；Russ 原版同时以 lineRender 与 pointsList 验证已生成路线*/
+/*路线控制器/字段/LineRenderer缓存；Russ 原版只读取它来校验和投影，不改写游戏渲染状态*/
 
 static NSUInteger SetIslandRouteVisible(BOOL visible) {
     if (!EnsureIl2CppThread()) return 0;
-    if (gFindPathLineCtrlKlass == NULL || gRendererKlass == NULL) {
+    if (gFindPathLineCtrlKlass == NULL || gLineRendererKlass == NULL) {
         gFindPathLineCtrlKlass = FindClassInAllAssemblies("", "FindPathLineCtrl");
-        gRendererKlass = FindClassInAllAssemblies("UnityEngine", "Renderer");
-        if (gFindPathLineCtrlKlass == NULL || gRendererKlass == NULL) return 0;
+        gLineRendererKlass = FindClassInAllAssemblies("UnityEngine", "LineRenderer");
+        if (gFindPathLineCtrlKlass == NULL || gLineRendererKlass == NULL) return 0;
     }
     if (gRouteLineRendererField == NULL) {
         gRouteLineRendererField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "lineRender");
         gRoutePointsListField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "pointsList");
         if (gRouteLineRendererField == NULL || gRoutePointsListField == NULL || gIl2CppFieldGetValue == NULL) return 0;
     }
-    if (gSetEnabledMethod == NULL) {
-        gSetEnabledMethod = gIl2CppClassGetMethodFromName(gRendererKlass, "set_enabled", 1);
-        if (gSetEnabledMethod == NULL) return 0;
-    }
     Il2CppArray *result = ScanObjectsOfClass(gFindPathLineCtrlKlass, YES);
     if (result == NULL) return 0;
-    BOOL value = visible ? YES : NO;
-    void *enableArgs[] = { &value };
+    if (!visible) return 0;
     NSUInteger touched = 0;
-    Il2CppObject *exception = NULL;
     for (uintptr_t index = 0; index < result->maxLength; index++) {
         Il2CppObject *routeController = result->objects[index];
         if (routeController == NULL) continue;
@@ -848,14 +841,11 @@ static NSUInteger SetIslandRouteVisible(BOOL visible) {
         Il2CppObject *pointsList = NULL;
         gIl2CppFieldGetValue(routeController, gRouteLineRendererField, &lineRenderer);
         gIl2CppFieldGetValue(routeController, gRoutePointsListField, &pointsList);
-        if (!ValidateInstanceOfClass(lineRenderer, gRendererKlass) || pointsList == NULL) continue;
-        exception = NULL;
-        gIl2CppRuntimeInvoke(gSetEnabledMethod, lineRenderer, enableArgs, &exception);
-        if (exception == NULL) touched++;
+        if (ValidateInstanceOfClass(lineRenderer, gLineRendererKlass) && pointsList != NULL) touched++;
     }
     return touched;
 }
-/*仅操作 FindPathLineCtrl.lineRender；pointsList 为空说明路线尚未生成，不触碰其他 LineRenderer*/
+/*原版只校验 FindPathLineCtrl.lineRender/pointsList；显示由 UIKit 路线覆盖层完成，不触碰游戏 LineRenderer*/
 
 static NSUInteger CopyIslandRouteWorldPoints(float *output, NSUInteger capacity) {
     if (output == NULL || capacity < 2 || !EnsureIl2CppThread()) return 0;
