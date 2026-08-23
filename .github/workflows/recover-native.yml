@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - analysis/input/RussOriginal.dylib
+      - analysis/input/Ciyue0818.dylib
       - tools/ghidra/RecoverNative.java
       - .github/workflows/recover-native.yml
 
@@ -39,10 +40,18 @@ jobs:
             -processor AARCH64:LE:64:v8A \
             -scriptPath tools/ghidra \
             -postScript RecoverNative.java analysis-output/RussNativeRecovered.c \
-            -deleteProject > analysis-output/ghidra.log 2>&1
-          ANALYSIS_STATUS=$?
-          echo "$ANALYSIS_STATUS" > analysis-output/ghidra.exit-code
-          cat analysis-output/ghidra.log
+            -deleteProject > analysis-output/russ-ghidra.log 2>&1
+          RUSS_STATUS=$?
+          "$ANALYZER_PATH" "$RUNNER_TEMP/ghidra-project" CiyueRecovery \
+            -import analysis/input/Ciyue0818.dylib \
+            -processor AARCH64:LE:64:v8A \
+            -scriptPath tools/ghidra \
+            -postScript RecoverNative.java analysis-output/CiyueNativeRecovered.c \
+            -deleteProject > analysis-output/ciyue-ghidra.log 2>&1
+          CIYUE_STATUS=$?
+          printf '%s\n%s\n' "$RUSS_STATUS" "$CIYUE_STATUS" > analysis-output/ghidra.exit-code
+          cat analysis-output/russ-ghidra.log
+          cat analysis-output/ciyue-ghidra.log
           exit 0
       - name: Publish recovery report
         run: |

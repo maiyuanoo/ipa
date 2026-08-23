@@ -1129,8 +1129,9 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
         ApplyFogRemoval(enabled);
         [self setCardHint:key text:enabled ? @"雾效已关闭" : @"雾效已恢复"];
     } else if ([key isEqualToString:@"wide"]) {
-        NSUInteger count = enabled ? ApplyFieldOfView(66.0) : ApplyFieldOfView([self sliderValueForKey:@"thirdPersonFOV"]);
-        [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"%lu 个相机已扩展", (unsigned long)count] : @"已恢复默认视角"]];
+        CGFloat thirdFOV = enabled ? 66.0 : [self sliderValueForKey:@"thirdPersonFOV"];
+        ApplyCameraFollow((float)thirdFOV, (float)[self sliderValueForKey:@"firstPersonFOV"]);
+        [self setCardHint:key text:enabled ? @"已调整角色相机视角" : @"已恢复角色相机视角"];
     } else if ([key isEqualToString:@"islandRoute"]) {
         NSUInteger count = SetAllLineRenderersVisible(enabled, YES);
         [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"已显示 %lu 条路线", (unsigned long)count] : @"已隐藏所有路线"]];
@@ -1232,8 +1233,6 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     if ([self.featureStates[@"fog"] boolValue]) ApplyFogRemoval(YES);
     if (speed != 1.0) ApplyTimeScale((float)speed);
     ApplyCameraFollow((float)(wide ? 66.0 : thirdFOV), (float)(wide ? 66.0 : firstFOV));
-    if (wide || effectiveFOV != 75.0) ApplyFieldOfView(effectiveFOV);
-
     if (heavyTick) {
         if ([self.featureStates[@"highlight"] boolValue]) ApplyHighlight(YES, 2.5f);
         if ([self.featureStates[@"demagnetization"] boolValue]) ApplyDemagnetization([self sliderValueForKey:@"demagnetization"]);
