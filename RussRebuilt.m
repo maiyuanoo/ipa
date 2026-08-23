@@ -163,6 +163,7 @@ static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
     if (monoKlass == NULL || objectKlass == NULL || behaviourKlass == NULL) return 0;
     if (gIl2CppClassGetTypeObject == NULL) return 0;
 
+
     Il2CppObject *typeObject = gIl2CppClassGetTypeObject(monoKlass);
     if (typeObject == NULL) return 0;
 
