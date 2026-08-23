@@ -5,12 +5,12 @@ INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1
 INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
 INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1150 ms) (ClassSearcher)  
+INFO  Class search complete (864 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (3553 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (2719 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
 WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
@@ -105,48 +105,49 @@ ERROR VarnodeContext: out of address spaces at @0009b390 for: d19-0009b390 (Varn
 ERROR VarnodeContext: out of address spaces at @00180544 for: d26-00180544 (VarnodeContext)  
 INFO  -----------------------------------------------------
     AARCH64 ELF PLT Thunks                     0.000 secs
-    ASCII Strings                              0.773 secs
-    Apply Data Archives                        0.402 secs
-    Basic Constant Reference Analyzer         24.289 secs
-    CFStrings                                  0.073 secs
-    Call Convention ID                         2.802 secs
-    Call-Fixup Installer                       0.111 secs
-    Create Address Tables                      0.625 secs
-    Create Address Tables - One Time           0.017 secs
-    Create Function                            1.844 secs
-    Data Reference                             0.669 secs
-    Decompiler Switch Analysis                10.144 secs
-    Decompiler Switch Analysis - One Time     44.542 secs
-    Demangler GNU                              0.271 secs
-    Disassemble                                0.486 secs
-    Disassemble Entry Points                   0.046 secs
-    Embedded Media                             0.062 secs
+    ASCII Strings                              0.542 secs
+    Apply Data Archives                        0.247 secs
+    Basic Constant Reference Analyzer         18.988 secs
+    CFStrings                                  0.041 secs
+    Call Convention ID                         2.303 secs
+    Call-Fixup Installer                       0.079 secs
+    Create Address Tables                      0.462 secs
+    Create Address Tables - One Time           0.012 secs
+    Create Function                            1.443 secs
+    Data Reference                             0.574 secs
+    Decompiler Switch Analysis                 9.424 secs
+    Decompiler Switch Analysis - One Time     39.884 secs
+    Demangler GNU                              0.189 secs
+    Disassemble                                0.369 secs
+    Disassemble Entry Points                   0.031 secs
+    Embedded Media                             0.047 secs
     External Entry References                  0.000 secs
-    Function ID                                0.036 secs
-    Function Start Search                      0.258 secs
-    Function Start Search After Code           0.168 secs
-    Function Start Search After Data           0.379 secs
-    Function Start Search delayed - One Time   0.063 secs
-    Mach-O Function Starts                     0.018 secs
-    Non-Returning Functions - Discovered       1.218 secs
+    Function ID                                0.017 secs
+    Function Start Search                      0.164 secs
+    Function Start Search After Code           0.132 secs
+    Function Start Search After Data           0.125 secs
+    Function Start Search delayed - One Time   0.036 secs
+    Mach-O Function Starts                     0.010 secs
+    Non-Returning Functions - Discovered       0.852 secs
     Non-Returning Functions - Known            0.006 secs
-    Objective-C Message Analyzer             171.325 secs
-    Objective-C Type Metadata Analyzer        10.058 secs
-    Reference                                  0.738 secs
-    Shared Return Calls                        0.991 secs
-    Stack                                     28.059 secs
-    Subroutine References                      0.585 secs
-    Subroutine References - One Time           0.003 secs
+    Objective-C Message Analyzer             152.311 secs
+    Objective-C Type Metadata Analyzer         7.978 secs
+    Reference                                  0.624 secs
+    Shared Return Calls                        1.002 secs
+    Stack                                     20.703 secs
+    Subroutine References                      0.439 secs
+    Subroutine References - One Time           0.001 secs
 -----------------------------------------------------
-     Total Time   301 secs
+     Total Time   259 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
 INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/CiyueNativeRecovered.c'  (HeadlessAnalyzer)  
 INFO  SCRIPT: /home/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java (HeadlessAnalyzer)  
-WARN  Decompiling 00512202, pcode error at 00512202: Invalid instruction address (improperly aligned) (DecompileCallback)  
-WARN  Decompiling 00512207, pcode error at 00512207: Invalid instruction address (improperly aligned) (DecompileCallback)  
-WARN  Decompiling 00513903, pcode error at 00513903: Invalid instruction address (improperly aligned) (DecompileCallback)  
+WARN  Decompiling 00511d02, pcode error at 00511d02: Invalid instruction address (improperly aligned) (DecompileCallback)  
+WARN  Decompiling 00512e01, pcode error at 00512e01: Invalid instruction address (improperly aligned) (DecompileCallback)  
+WARN  Decompiling 00512e03, pcode error at 00512e03: Invalid instruction address (improperly aligned) (DecompileCallback)  
+WARN  Decompiling 00513901, pcode error at 00513901: Invalid instruction address (improperly aligned) (DecompileCallback)  
 WARN  Decompiling 00514c01, pcode error at 00514c01: Invalid instruction address (improperly aligned) (DecompileCallback)  
 INFO  ANALYZING changes made by post scripts: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
 INFO  REPORT: Post-analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
