@@ -1030,9 +1030,10 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
     [center addObserver:self selector:@selector(pauseOverlayRendering) name:UIApplicationWillResignActiveNotification object:nil];
     [center addObserver:self selector:@selector(pauseOverlayRendering) name:UIApplicationDidEnterBackgroundNotification object:nil];
+    [center addObserver:self selector:@selector(pauseOverlayRendering) name:UIApplicationWillTerminateNotification object:nil];
     [center addObserver:self selector:@selector(resumeOverlayRendering) name:UIApplicationDidBecomeActiveNotification object:nil];
 }
-/*对齐辞月 hookui_pauseRendering/hookui_resumeRendering：切后台暂停帧回调，回前台后恢复*/
+/*对齐辞月 hookui_pauseRendering/hookui_resumeRendering：失焦、后台、终止均暂停帧回调，回前台后恢复*/
 
 - (void)pauseOverlayRendering {
     self.runtimeDisplayLink.paused = YES;
