@@ -5,14 +5,14 @@ INFO  Using log config file: jar:file:/Users/runner/work/_temp/ghidra/ghidra_12.
 INFO  Using log file: /Users/runner/Library/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
 INFO  Loading user preferences: /Users/runner/Library/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (828 ms) (ClassSearcher)  
+INFO  Class search complete (493 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
 INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
 INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
-INFO  Headless startup complete (8085 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (7541 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
 INFO  HEADLESS Script Paths:
     /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
@@ -40,10 +40,159 @@ INFO  HEADLESS Script Paths:
     /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts (HeadlessAnalyzer)  
 INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
 INFO  Creating temporary project: /Users/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
-ERROR Abort due to Headless analyzer error: Directory not found: /Users/runner/work/_temp/ghidra-project (HeadlessAnalyzer) java.io.FileNotFoundException: Directory not found: /Users/runner/work/_temp/ghidra-project
-	at ghidra.framework.project.DefaultProjectManager.createProject(DefaultProjectManager.java:100)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processLocal(HeadlessAnalyzer.java:439)
+INFO  Creating project: /Users/runner/work/_temp/ghidra-project/RussRecovery (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: /Users/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+WARN  Using unknown opinion: Mac OS X Mach-O, AARCH64:LE:64:v8A:default (LcsHintLoadSpecChooser)  
+INFO  Using Loader: Mac OS X Mach-O (ProgramLoader)  
+INFO  Using Language/Compiler: AARCH64:LE:64:v8A:default (ProgramLoader)  
+INFO  Using Library Search Path: [., /System/Library/dyld/dyld_shared_cache_arm64e, /System/Library/dyld/dyld_shared_cache_x86_64, /System/Library/dyld/dyld_shared_cache_x86_64h, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_arm64e, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_x86_64, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_x86_64h, /Users/runner/Library/Java/Extensions, /Library/Java/Extensions, /Network/Library/Java/Extensions, /System/Library/Java/Extensions, /usr/lib/java] (ProgramLoader)  
+INFO  Additional info:
+Loading file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib?MD5=1a88942cf168b0e5a4a65d1f36306ab7...
+Discovered 2119 DYLD_CHAINED_PTR_64 chained pointers.
+Fixed up 2119 chained pointers.
+RussOriginal.dylib: installed 8 objc SpecExtensions
+------------------------------------------------
+
+Linking the External Programs of 'RussOriginal.dylib' to imported libraries...
+  [/System/Library/Frameworks/CryptoKit.framework/CryptoKit] -> not found in project
+  [/System/Library/Frameworks/Security.framework/Security] -> not found in project
+  [/System/Library/Frameworks/QuartzCore.framework/QuartzCore] -> not found in project
+  [/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics] -> not found in project
+  [/System/Library/Frameworks/Foundation.framework/Foundation] -> not found in project
+  [/System/Library/Frameworks/UIKit.framework/UIKit] -> not found in project
+  [/usr/lib/libobjc.A.dylib] -> not found in project
+  [/usr/lib/libc++.1.dylib] -> not found in project
+  [/usr/lib/libSystem.B.dylib] -> not found in project
+  [/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation] -> not found in project
+  [/usr/lib/swift/libswiftCore.dylib] -> not found in project
+  [/usr/lib/swift/libswiftCoreFoundation.dylib] -> not found in project
+  [/usr/lib/swift/libswiftCoreImage.dylib] -> not found in project
+  [/usr/lib/swift/libswiftDarwin.dylib] -> not found in project
+  [/usr/lib/swift/libswiftDispatch.dylib] -> not found in project
+  [/usr/lib/swift/libswiftMetal.dylib] -> not found in project
+  [/usr/lib/swift/libswiftOSLog.dylib] -> not found in project
+  [/usr/lib/swift/libswiftObjectiveC.dylib] -> not found in project
+  [/usr/lib/swift/libswiftQuartzCore.dylib] -> not found in project
+  [/usr/lib/swift/libswiftSpatial.dylib] -> not found in project
+  [/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib] -> not found in project
+  [/usr/lib/swift/libswiftXPC.dylib] -> not found in project
+  [/usr/lib/swift/libswiftos.dylib] -> not found in project
+  [/usr/lib/swift/libswiftsimd.dylib] -> not found in project
+  [/usr/lib/swift/libswiftFoundation.dylib] -> not found in project
+  [/usr/lib/swift/libswiftUIKit.dylib] -> not found in project
+------------------------------------------------
+
+ (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  hit non-returning function, restarting decompiler switch analyzer later (DecompilerSwitchAnalyzer)  
+ERROR os/mac_arm_64/decompile does not exist (see GettingStarted.md, 'Building Native Components') (DecompileProcessFactory)  
+INFO  Packed database cache: /var/tmp/runner-ghidra/packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: mac_osx (ApplyDataArchiveAnalyzer)  
+ERROR Unexpected exception (DecompilerCallConventionAnalyzer) java.util.concurrent.ExecutionException: java.io.IOException: Unable to create decompiler for program: RussOriginal.dylib - .ProgramDB
+Could not find decompiler executable
+	at java.base/java.util.concurrent.FutureTask.report(FutureTask.java:122)
+	at java.base/java.util.concurrent.FutureTask.get(FutureTask.java:191)
+	at generic.concurrent.QResult.<init>(QResult.java:40)
+	at generic.concurrent.FutureTaskMonitor.run(FutureTaskMonitor.java:77)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: java.io.IOException: Unable to create decompiler for program: RussOriginal.dylib - .ProgramDB
+Could not find decompiler executable
+	at ghidra.app.cmd.function.DecompilerParallelConventionAnalysisCmd.createDecompilerInterface(DecompilerParallelConventionAnalysisCmd.java:67)
+	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$DecompilerFactory.doCreate(DecompilerCallConventionAnalyzer.java:259)
+	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$DecompilerFactory.doCreate(DecompilerCallConventionAnalyzer.java:249)
+	at generic.cache.CountingBasicFactory.create(CountingBasicFactory.java:30)
+	at generic.cache.CachingPool.get(CachingPool.java:81)
+	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$ParallelDecompilerCallback.run(DecompilerCallConventionAnalyzer.java:284)
+	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$ParallelDecompilerCallback.run(DecompilerCallConventionAnalyzer.java:268)
+	at generic.concurrent.QRunnableAdapter.process(QRunnableAdapter.java:31)
+	at generic.concurrent.ConcurrentQ$CallbackCallable.call(ConcurrentQ.java:706)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at generic.concurrent.FutureTaskMonitor.run(FutureTaskMonitor.java:75)
+	... 3 more
+ 
+INFO  -----------------------------------------------------
+    AARCH64 ELF PLT Thunks                     0.000 secs
+    ASCII Strings                              0.357 secs
+    Apply Data Archives                        0.244 secs
+    Basic Constant Reference Analyzer          1.781 secs
+    CFStrings                                  0.017 secs
+    Call Convention ID                         0.030 secs
+    Call-Fixup Installer                       0.016 secs
+    Create Address Tables                      0.110 secs
+    Create Address Tables - One Time           0.039 secs
+    Create Function                            0.148 secs
+    Data Reference                             0.258 secs
+    Decompiler Switch Analysis                 0.863 secs
+    Decompiler Switch Analysis - One Time      0.323 secs
+    Demangler GNU                              0.627 secs
+    Demangler Swift                            8.369 secs
+    Disassemble                                0.460 secs
+    Disassemble Entry Points                   0.062 secs
+    Embedded Media                             0.157 secs
+    External Entry References                  0.001 secs
+    Function ID                                0.026 secs
+    Function Start Search                      0.070 secs
+    Function Start Search After Code           0.022 secs
+    Function Start Search After Data           0.034 secs
+    Function Start Search delayed - One Time   0.016 secs
+    Mach-O Function Starts                     0.092 secs
+    Non-Returning Functions - Discovered       0.117 secs
+    Non-Returning Functions - Known            0.005 secs
+    Objective-C Message Analyzer               0.157 secs
+    Objective-C Type Metadata Analyzer         1.374 secs
+    Reference                                  0.229 secs
+    Shared Return Calls                        0.177 secs
+    Stack                                      1.568 secs
+    Subroutine References                      0.229 secs
+    Subroutine References - One Time           0.003 secs
+    Swift Type Metadata Analyzer               0.085 secs
+-----------------------------------------------------
+     Total Time   18 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+INFO  REPORT: Analysis succeeded for file: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/RussNativeRecovered.c'  (HeadlessAnalyzer)  
+RecoverNative.java:57: error: cannot find symbol
+                    writer.printf("/* Unable to decompile %s at %s */%n%n", functionName, function.getEntryPoint());
+                                                                            ^
+  symbol:   variable functionName
+  location: class RecoverNative
+RecoverNative.java:61: error: cannot find symbol
+                writer.printf("/* %s at %s */%n", functionName, function.getEntryPoint());
+                                                  ^
+  symbol:   variable functionName
+  location: class RecoverNative
+skipping /Users/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java
+ERROR REPORT SCRIPT ERROR: RecoverNative.java : The class could not be found. It must be the public class of the .java file: RecoverNative not found by c32ac31e [1] (HeadlessAnalyzer) ghidra.app.script.GhidraScriptLoadException: The class could not be found. It must be the public class of the .java file: RecoverNative not found by c32ac31e [1]
+	at ghidra.app.script.JavaScriptProvider.getScriptInstance(JavaScriptProvider.java:114)
+	at ghidra.app.util.headless.HeadlessAnalyzer.runScriptsList(HeadlessAnalyzer.java:915)
+	at ghidra.app.util.headless.HeadlessAnalyzer.analyzeProgram(HeadlessAnalyzer.java:1085)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processFileWithImport(HeadlessAnalyzer.java:1583)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processWithLoader(HeadlessAnalyzer.java:1743)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processWithImport(HeadlessAnalyzer.java:1684)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processWithImport(HeadlessAnalyzer.java:1768)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processLocal(HeadlessAnalyzer.java:452)
 	at ghidra.app.util.headless.AnalyzeHeadless.launch(AnalyzeHeadless.java:199)
 	at ghidra.GhidraLauncher.launch(GhidraLauncher.java:81)
 	at ghidra.Ghidra.main(Ghidra.java:54)
+Caused by: java.lang.ClassNotFoundException: RecoverNative not found by c32ac31e [1]
+	at org.apache.felix.framework.BundleWiringImpl.findClassOrResourceByDelegation(BundleWiringImpl.java:1591)
+	at org.apache.felix.framework.BundleWiringImpl.access$300(BundleWiringImpl.java:79)
+	at org.apache.felix.framework.BundleWiringImpl$BundleClassLoader.loadClass(BundleWiringImpl.java:1976)
+	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:526)
+	at org.apache.felix.framework.Felix.loadBundleClass(Felix.java:2116)
+	at org.apache.felix.framework.BundleImpl.loadClass(BundleImpl.java:986)
+	at ghidra.app.script.JavaScriptProvider.loadClass(JavaScriptProvider.java:166)
+	at ghidra.app.script.JavaScriptProvider.getScriptInstance(JavaScriptProvider.java:97)
+	... 10 more
  
+INFO  ANALYZING changes made by post scripts: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  /RussOriginal.dylib: file created (runner) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /RussOriginal.dylib (RussRecovery:/RussOriginal.dylib) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
