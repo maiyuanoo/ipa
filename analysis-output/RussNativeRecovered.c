@@ -3229,6 +3229,29 @@ undefined4 FUN_0001a330(uint param_1,long param_2,uint param_3)
 
 
 
+/* FUN_0001a3b0 at 0001a3b0 */
+
+undefined4 FUN_0001a3b0(long param_1,long param_2)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  long local_28;
+  
+  uVar2 = 0;
+  if ((param_1 != 0) && (param_2 != 0)) {
+    local_28 = 0;
+    uVar1 = FUN_0001a400(param_1,&local_28,8);
+    uVar2 = 0;
+    if (local_28 == param_2) {
+      uVar2 = uVar1;
+    }
+  }
+  return uVar2;
+}
+
+
+
 /* FUN_0001a400 at 0001a400 */
 
 bool FUN_0001a400(ulong param_1,vm_address_t param_2,ulong param_3)
@@ -4728,4 +4751,4 @@ void FUN_0001be30(ulong *param_1,ulong param_2)
 
 
 
-/* Recovered functions: 60 */
+/* Recovered functions: 61 */
