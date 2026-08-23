@@ -22,7 +22,9 @@ public class RecoverNative extends GhidraScript {
         long entryOffset = function.getEntryPoint().getOffset();
         return entryOffset == 0x17098L || entryOffset == 0x17184L ||
             entryOffset == 0x17720L || entryOffset == 0x195a8L ||
-            entryOffset == 0x19cf0L || entryOffset == 0x19de8L ||
+            entryOffset == 0x19624L || entryOffset == 0x19894L ||
+            entryOffset == 0x19afcL || entryOffset == 0x19cf0L ||
+            entryOffset == 0x19de8L ||
             entryOffset == 0x1a0f4L || entryOffset == 0x1a2d8L ||
             entryOffset == 0x1a330L ||
             entryOffset == 0x1a400L || entryOffset == 0x1a480L ||
@@ -32,9 +34,9 @@ public class RecoverNative extends GhidraScript {
             entryOffset == 0x1ab08L || entryOffset == 0x1abecL ||
             entryOffset == 0x1ac8cL || entryOffset == 0x1ad7cL ||
             entryOffset == 0x1ae10L || entryOffset == 0x1af00L ||
-            entryOffset == 0x1af60L || entryOffset == 0x1b47cL ||
-            entryOffset == 0x1b070L || entryOffset == 0x1b47cL ||
-            entryOffset == 0x1b500L || entryOffset == 0x1b664L;
+            entryOffset == 0x1af60L || entryOffset == 0x1b070L ||
+            entryOffset == 0x1b47cL || entryOffset == 0x1b500L ||
+            entryOffset == 0x1b628L || entryOffset == 0x1b664L;
     }
 
     @Override
