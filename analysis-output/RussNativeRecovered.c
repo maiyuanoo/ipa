@@ -1501,6 +1501,18 @@ undefined8 _YYGameMemoryShutdown(void)
 
 
 
+/* FUN_000176fc at 000176fc */
+
+void FUN_000176fc(void)
+
+{
+  FUN_00017720(1);
+  DAT_000e7441 = 0;
+  return;
+}
+
+
+
 /* FUN_00017720 at 00017720 */
 
 /* WARNING: Removing unreachable block (ram,0x00019170) */
@@ -2904,6 +2916,25 @@ LAB_00019a84:
 
 
 
+/* FUN_00019ab4 at 00019ab4 */
+
+void FUN_00019ab4(void)
+
+{
+  _CACurrentMediaTime();
+  FUN_00019afc();
+  DAT_000e7480 = 0;
+  DAT_000e7488 = 0;
+  DAT_000e748c = 0;
+  DAT_000e7490 = 0;
+  DAT_000e7498 = 0;
+  DAT_000e749c = 0;
+  DAT_000e7230 = 0;
+  return;
+}
+
+
+
 /* FUN_00019afc at 00019afc */
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
@@ -3004,6 +3035,18 @@ void FUN_00019cf0(void)
 
 
 
+/* FUN_00019d3c at 00019d3c */
+
+void FUN_00019d3c(void)
+
+{
+  FUN_00017720(0);
+  DAT_000e7248 = 0;
+  return;
+}
+
+
+
 /* FUN_00019de8 at 00019de8 */
 
 /* WARNING: Function: _objc_retain replaced with injection: _objc_retain_fixup */
@@ -3016,6 +3059,61 @@ undefined8 FUN_00019de8(void)
     FUN_0003ee20();
   }
   return DAT_000e7268;
+}
+
+
+
+/* FUN_00019e2c at 00019e2c */
+
+void FUN_00019e2c(void)
+
+{
+  uint uVar1;
+  char *interval;
+  char *leeway;
+  char cVar2;
+  bool bVar3;
+  dispatch_source_t source;
+  uint uVar4;
+  dispatch_time_t start;
+  undefined8 uVar5;
+  
+  source = DAT_000e7170;
+  uVar1 = 2;
+  if (DAT_000e7260 == '\0') {
+    uVar1 = (uint)DAT_000e7279;
+  }
+  do {
+    uVar4 = DAT_000e7290;
+    cVar2 = '\x01';
+    bVar3 = (bool)ExclusiveMonitorPass(0xe7290,0x10);
+    if (bVar3) {
+      cVar2 = ExclusiveMonitorsStatus();
+      DAT_000e7290 = uVar1;
+    }
+  } while (cVar2 != '\0');
+  if (uVar4 != uVar1) {
+    if (DAT_000e7279 == 0 && DAT_000e7260 == '\0') {
+      _dispatch_source_set_timer(DAT_000e7170,0xffffffffffffffff,0xffffffffffffffff,0);
+      DAT_000e7228 = 0;
+      uVar5 = _CACurrentMediaTime();
+      FUN_00019624();
+      FUN_00019894(uVar5);
+      return;
+    }
+    interval = "reGState";
+    if (DAT_000e7260 == '\0') {
+      interval = (char *)0x989680;
+    }
+    leeway = (char *)0x0;
+    if (DAT_000e7260 == '\0') {
+      leeway = "reGState";
+    }
+    start = _dispatch_time(0,0);
+    _dispatch_source_set_timer(source,start,(uint64_t)interval,(uint64_t)leeway);
+    return;
+  }
+  return;
 }
 
 
@@ -4630,4 +4728,4 @@ void FUN_0001be30(ulong *param_1,ulong param_2)
 
 
 
-/* Recovered functions: 56 */
+/* Recovered functions: 60 */
