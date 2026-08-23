@@ -21,12 +21,24 @@ typedef struct Il2CppArray {
     uintptr_t maxLength;
     Il2CppObject *objects[];
 } Il2CppArray;
+typedef struct Il2CppString {
+    void *klass;
+    void *monitor;
+    int32_t length;
+    unichar chars[];
+} Il2CppString;
 typedef struct UnityColor {
     float r;
     float g;
     float b;
     float a;
 } UnityColor;
+typedef struct RussDrawingEntitySnapshot {
+    float x;
+    float y;
+    float z;
+    __unsafe_unretained NSString *name;
+} RussDrawingEntitySnapshot;
 /*UnityEngine.Color 为四个连续 float；原版通过 Graphic.get_color/set_color 读写完整16字节*/
 /* il2cpp基础前向声明 数组结构体(头16字节klass+monitor bounds 8 max_length 8 数据从32开始)*/
 
@@ -72,6 +84,17 @@ static void *(*gIl2CppClassGetParent)(void *klass);
 static Il2CppGCHandleNew gIl2CppGCHandleNew;
 static Il2CppGCHandleGetTarget gIl2CppGCHandleGetTarget;
 static Il2CppGCHandleFree gIl2CppGCHandleFree;
+
+static void *gDrawingManagerKlass;
+static void *gDrawingEntityKlass;
+static void *gDrawingManagerInstanceField;
+static void *gDrawingEntityDictionaryField;
+static void *gDrawingEntityTransformField;
+static void *gDrawingItemConfigField;
+static void *gDrawingPrefabConfigField;
+static void *gDrawingItemNameField;
+static void *gDrawingPrefabNameField;
+static const MethodInfo *gDrawingEntityTransformMethod;
 
 static void *gUnityFrameworkHandle;
 static uintptr_t gUnityFrameworkBase;
@@ -1099,6 +1122,163 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 }
 /*camera.worldtoscreenpoint投影世界坐标到屏幕 棺材esp标记用*/
 
+static NSString *CopyIl2CppString(Il2CppObject *object) {
+    if (object == NULL) return nil;
+    Il2CppString *string = (Il2CppString *)object;
+    if (string->length <= 0 || string->length > 96) return nil;
+    return [[NSString alloc] initWithCharacters:string->chars length:(NSUInteger)string->length];
+}
+/*热更 String 采用 UTF-16；限制标签长度，防止异常对象导致覆盖层分配过大。*/
+
+static NSString *GetDrawingConfigName(Il2CppObject *config, void **fieldCache) {
+    if (config == NULL || fieldCache == NULL || gIl2CppFieldGetValue == NULL) return nil;
+    void *klass = *(void **)config;
+    if (klass == NULL) return nil;
+    if (*fieldCache == NULL && gIl2CppClassGetFieldFromName != NULL) {
+        *fieldCache = gIl2CppClassGetFieldFromName(klass, "Name");
+    }
+    if (*fieldCache == NULL) return nil;
+    Il2CppObject *name = NULL;
+    gIl2CppFieldGetValue(config, *fieldCache, &name);
+    return CopyIl2CppString(name);
+}
+
+static BOOL EnsureDrawingApi(void) {
+    if (!EnsureIl2CppThread() || gIl2CppFieldGetValue == NULL ||
+        gIl2CppFieldStaticGetValue == NULL || gIl2CppObjectUnbox == NULL) return NO;
+    if (gDrawingManagerKlass == NULL) {
+        gDrawingManagerKlass = FindClassInAllAssemblies("", "OEPJBOIGGPO");
+        if (gDrawingManagerKlass == NULL) return NO;
+    }
+    if (gDrawingEntityKlass == NULL) {
+        gDrawingEntityKlass = FindClassInAllAssemblies("", "DIGLCECMPAB");
+        if (gDrawingEntityKlass == NULL) return NO;
+    }
+    if (gDrawingManagerInstanceField == NULL) {
+        gDrawingManagerInstanceField = gIl2CppClassGetFieldFromName(gDrawingManagerKlass, "BHOAGIJIMMJ");
+    }
+    if (gDrawingEntityDictionaryField == NULL) {
+        gDrawingEntityDictionaryField = gIl2CppClassGetFieldFromName(gDrawingManagerKlass, "NLMAFONOFFH");
+    }
+    if (gDrawingEntityTransformMethod == NULL) {
+        gDrawingEntityTransformMethod = gIl2CppClassGetMethodFromName(gDrawingEntityKlass, "MCCJPBBPEMK", 0);
+    }
+    if (gDrawingEntityTransformField == NULL) {
+        gDrawingEntityTransformField = gIl2CppClassGetFieldFromName(gDrawingEntityKlass, "<EPOOFKEKHEN>k__BackingField");
+    }
+    if (gDrawingItemConfigField == NULL) {
+        gDrawingItemConfigField = gIl2CppClassGetFieldFromName(gDrawingEntityKlass, "LCBPLHGAECL");
+    }
+    if (gDrawingPrefabConfigField == NULL) {
+        gDrawingPrefabConfigField = gIl2CppClassGetFieldFromName(gDrawingEntityKlass, "OOKGDEJMAKP");
+    }
+    return gDrawingManagerInstanceField != NULL && gDrawingEntityDictionaryField != NULL &&
+        (gDrawingEntityTransformMethod != NULL || gDrawingEntityTransformField != NULL);
+}
+/*绘制只依赖热更公开字段和已恢复的 Transform getter；热更程序集未加载时返回 NO，后续帧自动重试。*/
+
+static Il2CppObject *GetDrawingEntityTransform(Il2CppObject *entity) {
+    if (entity == NULL) return NULL;
+    if (gDrawingEntityTransformMethod != NULL) {
+        Il2CppObject *exception = NULL;
+        Il2CppObject *transform = gIl2CppRuntimeInvoke(gDrawingEntityTransformMethod, entity, NULL, &exception);
+        if (exception == NULL && transform != NULL) return transform;
+    }
+    if (gDrawingEntityTransformField == NULL) return NULL;
+    Il2CppObject *transform = NULL;
+    gIl2CppFieldGetValue(entity, gDrawingEntityTransformField, &transform);
+    return transform;
+}
+
+static NSString *GetDrawingEntityName(Il2CppObject *entity) {
+    if (entity == NULL) return @"物资";
+    Il2CppObject *itemConfig = NULL;
+    if (gDrawingItemConfigField != NULL) {
+        gIl2CppFieldGetValue(entity, gDrawingItemConfigField, &itemConfig);
+        NSString *name = GetDrawingConfigName(itemConfig, &gDrawingItemNameField);
+        if (name.length > 0) return name;
+    }
+    Il2CppObject *prefabConfig = NULL;
+    if (gDrawingPrefabConfigField != NULL) {
+        gIl2CppFieldGetValue(entity, gDrawingPrefabConfigField, &prefabConfig);
+        NSString *name = GetDrawingConfigName(prefabConfig, &gDrawingPrefabNameField);
+        if (name.length > 0) return name;
+    }
+    return @"物资";
+}
+
+static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshots, NSUInteger capacity) {
+    if (snapshots == NULL || capacity == 0 || !EnsureDrawingApi()) return 0;
+    Il2CppObject *manager = NULL;
+    gIl2CppFieldStaticGetValue(gDrawingManagerInstanceField, &manager);
+    if (manager == NULL) return 0;
+
+    Il2CppObject *dictionary = NULL;
+    gIl2CppFieldGetValue(manager, gDrawingEntityDictionaryField, &dictionary);
+    if (dictionary == NULL) return 0;
+    void *dictionaryKlass = *(void **)dictionary;
+    if (dictionaryKlass == NULL) return 0;
+    const MethodInfo *valuesMethod = gIl2CppClassGetMethodFromName(dictionaryKlass, "get_Values", 0);
+    if (valuesMethod == NULL) return 0;
+
+    Il2CppObject *exception = NULL;
+    Il2CppObject *values = gIl2CppRuntimeInvoke(valuesMethod, dictionary, NULL, &exception);
+    if (exception != NULL || values == NULL) return 0;
+    void *valuesKlass = *(void **)values;
+    const MethodInfo *getEnumeratorMethod = valuesKlass == NULL ? NULL : gIl2CppClassGetMethodFromName(valuesKlass, "GetEnumerator", 0);
+    if (getEnumeratorMethod == NULL) return 0;
+    exception = NULL;
+    Il2CppObject *enumerator = gIl2CppRuntimeInvoke(getEnumeratorMethod, values, NULL, &exception);
+    if (exception != NULL || enumerator == NULL) return 0;
+
+    void *enumeratorKlass = *(void **)enumerator;
+    const MethodInfo *moveNextMethod = enumeratorKlass == NULL ? NULL : gIl2CppClassGetMethodFromName(enumeratorKlass, "MoveNext", 0);
+    const MethodInfo *currentMethod = enumeratorKlass == NULL ? NULL : gIl2CppClassGetMethodFromName(enumeratorKlass, "get_Current", 0);
+    const MethodInfo *disposeMethod = enumeratorKlass == NULL ? NULL : gIl2CppClassGetMethodFromName(enumeratorKlass, "Dispose", 0);
+    if (moveNextMethod == NULL || currentMethod == NULL) return 0;
+
+    NSUInteger count = 0;
+    while (count < capacity) {
+        exception = NULL;
+        Il2CppObject *hasNextBox = gIl2CppRuntimeInvoke(moveNextMethod, enumerator, NULL, &exception);
+        if (exception != NULL || hasNextBox == NULL) break;
+        BOOL *hasNext = (BOOL *)gIl2CppObjectUnbox(hasNextBox);
+        if (hasNext == NULL || !*hasNext) break;
+        exception = NULL;
+        Il2CppObject *entity = gIl2CppRuntimeInvoke(currentMethod, enumerator, NULL, &exception);
+        if (exception != NULL || entity == NULL) continue;
+        Il2CppObject *transform = GetDrawingEntityTransform(entity);
+        float x = 0.0f, y = 0.0f, z = 0.0f;
+        if (transform == NULL || !GetObjectWorldPosition(transform, &x, &y, &z)) continue;
+        snapshots[count].x = x;
+        snapshots[count].y = y;
+        snapshots[count].z = z;
+        snapshots[count].name = GetDrawingEntityName(entity);
+        count++;
+    }
+    if (disposeMethod != NULL) {
+        exception = NULL;
+        gIl2CppRuntimeInvoke(disposeMethod, enumerator, NULL, &exception);
+    }
+    return count;
+}
+/*不触及 Dictionary 内部布局：通过 Values/GetEnumerator/MoveNext/Current 枚举，实体指针只在当前帧内使用。*/
+
+@interface RussOutlinedLabel : UILabel
+@end
+
+@implementation RussOutlinedLabel
+- (void)drawTextInRect:(CGRect)rect {
+    UIColor *foregroundColor = self.textColor;
+    self.textColor = UIColor.blackColor;
+    [super drawTextInRect:CGRectOffset(rect, -1.0, 0.0)];
+    [super drawTextInRect:CGRectOffset(rect, 1.0, 0.0)];
+    self.textColor = foregroundColor;
+    [super drawTextInRect:rect];
+}
+@end
+/*对应辞月原生绘制：先左右各偏移 1px 绘制黑色描边，再绘制居中的正文。*/
+
 @interface RussOverlayController : NSObject
 @property(nonatomic, strong) UIView *mainPanel;
 @property(nonatomic, strong) UIScrollView *panelScroll;
@@ -1126,6 +1306,9 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 @property(nonatomic, strong) UIView *routeOverlay;
 @property(nonatomic, strong) CAShapeLayer *routeShadowLayer;
 @property(nonatomic, strong) CAShapeLayer *routeLineLayer;
+@property(nonatomic, strong) CADisplayLink *drawingDisplayLink;
+@property(nonatomic, strong) UIView *drawingOverlay;
+@property(nonatomic, strong) NSMutableArray<RussOutlinedLabel *> *drawingLabels;
 @property(nonatomic, strong) CADisplayLink *runtimeDisplayLink;
 @property(nonatomic, assign) NSUInteger runtimeFrameTick;
 @property(nonatomic, assign) BOOL lifecycleObserversInstalled;
@@ -1187,6 +1370,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     self.runtimeDisplayLink.paused = YES;
     self.coffinDisplayLink.paused = YES;
     self.routeDisplayLink.paused = YES;
+    self.drawingDisplayLink.paused = YES;
 }
 
 - (void)shutdownFeatureRuntime {
@@ -1199,6 +1383,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     ApplyCameraFollow(0.0f, NO, 0.0f, NO);
     [self stopCoffinMarkers];
     [self stopIslandRouteOverlay];
+    [self stopDrawingOverlay];
 }
 /*对齐 _YYGameMemoryShutdown：终止时撤销本 dylib 修改的状态并释放覆盖层对象。*/
 
@@ -1206,6 +1391,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     self.runtimeDisplayLink.paused = NO;
     self.coffinDisplayLink.paused = NO;
     self.routeDisplayLink.paused = NO;
+    self.drawingDisplayLink.paused = NO;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 200 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
         [self restoreFeatureRuntime];
         [self tickRuntime];
@@ -1242,7 +1428,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     self.engineStatusState = 0;
 
     self.panelScroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0.0, 44.0, 300.0, scrollHeight)];
-    self.panelScroll.contentSize = CGSizeMake(300.0, 688.0);
+    self.panelScroll.contentSize = CGSizeMake(300.0, 758.0);
     self.panelScroll.showsVerticalScrollIndicator = YES;
     [self.mainPanel addSubview:self.panelScroll];
 
@@ -1262,13 +1448,14 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 /*主面板 russ公益 标题+44pt拖动条+引擎连接状态 右侧滚动区9张功能卡片 + 欢迎验证页*/
 
 - (NSArray *)featureOrder {
-    return @[@"highlight", @"coffin", @"fog", @"wide", @"islandRoute",
+    return @[@"highlight", @"coffin", @"drawing", @"fog", @"wide", @"islandRoute",
              @"firstPersonFOV", @"thirdPersonFOV", @"demagnetization", @"globalSpeed"];
 }
 /*卡片顺序 高亮 棺材透视 去雾 广角 岛屿路线 第一人fov 第三人fov 消磁 速度 */
 
 - (NSDictionary *)cardSpecifications {
     return @{
+        @"drawing": @{@"title": @"实体绘制", @"icon": @"text.viewfinder", @"desc": @"显示物资名称与距离"},
         @"highlight": @{@"title": @"高亮", @"icon": @"sun.max.fill", @"desc": @"增强场景光照亮度"},
         @"coffin": @{@"title": @"棺材透视", @"icon": @"shippingbox.fill", @"desc": @"显示所有棺材并标记位置"},
         @"fog": @{@"title": @"去雾", @"icon": @"cloud.fog.fill", @"desc": @"关闭场景雾效"},
@@ -1589,6 +1776,10 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
             [self stopCoffinMarkers];
             [self setCardHint:key text:@"已关闭棺材透视"];
         }
+    } else if ([key isEqualToString:@"drawing"]) {
+        if (enabled) [self startDrawingOverlay];
+        else [self stopDrawingOverlay];
+        [self setCardHint:key text:enabled ? @"正在等待热更实体" : @"已关闭实体绘制"];
     } else if ([key isEqualToString:@"fog"]) {
         ApplyFogRemoval(enabled);
         [self setCardHint:key text:enabled ? @"雾效已关闭" : @"雾效已恢复"];
@@ -1654,6 +1845,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 - (BOOL)anyFeatureActive {
     if ([self.featureStates[@"highlight"] boolValue]) return YES;
     if ([self.featureStates[@"coffin"] boolValue]) return YES;
+    if ([self.featureStates[@"drawing"] boolValue]) return YES;
     if ([self.featureStates[@"fog"] boolValue]) return YES;
     if ([self.featureStates[@"wide"] boolValue]) return YES;
     if ([self.featureStates[@"islandRoute"] boolValue]) return YES;
@@ -1812,6 +2004,69 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 }
 /*按原版 pointsList → 屏幕点的处理链实时绘制；无有效点或镜头后点会清空断开片段*/
 
+- (void)startDrawingOverlay {
+    if (self.drawingDisplayLink != nil) return;
+    UIWindow *window = self.floatingButton.window;
+    if (window == nil) return;
+    self.drawingOverlay = [[UIView alloc] initWithFrame:window.bounds];
+    self.drawingOverlay.backgroundColor = UIColor.clearColor;
+    self.drawingOverlay.userInteractionEnabled = NO;
+    self.drawingOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.drawingLabels = [NSMutableArray arrayWithCapacity:32];
+    for (NSInteger index = 0; index < 32; index++) {
+        RussOutlinedLabel *label = [[RussOutlinedLabel alloc] initWithFrame:CGRectMake(-160.0, -24.0, 160.0, 18.0)];
+        label.font = [UIFont boldSystemFontOfSize:12.0];
+        label.textAlignment = NSTextAlignmentCenter;
+        label.textColor = [UIColor colorWithRed:0.20 green:0.95 blue:0.74 alpha:1.0];
+        label.numberOfLines = 1;
+        label.hidden = YES;
+        [self.drawingLabels addObject:label];
+        [self.drawingOverlay addSubview:label];
+    }
+    [window addSubview:self.drawingOverlay];
+    self.drawingDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateDrawingOverlay)];
+    self.drawingDisplayLink.preferredFramesPerSecond = 30;
+    [self.drawingDisplayLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
+}
+/*独立绘制覆盖层固定复用 32 个标签，避免在游戏帧循环中反复创建 UIKit 对象。*/
+
+- (void)stopDrawingOverlay {
+    [self.drawingDisplayLink invalidate];
+    self.drawingDisplayLink = nil;
+    [self.drawingOverlay removeFromSuperview];
+    self.drawingOverlay = nil;
+    self.drawingLabels = nil;
+}
+
+- (void)updateDrawingOverlay {
+    if (self.drawingOverlay == nil || self.drawingLabels == nil) return;
+    for (RussOutlinedLabel *label in self.drawingLabels) label.hidden = YES;
+    Il2CppObject *camera = GetMainCameraObject();
+    if (camera == NULL) return;
+    float cameraX = 0.0f, cameraY = 0.0f, cameraZ = 0.0f;
+    if (!GetObjectWorldPosition(camera, &cameraX, &cameraY, &cameraZ)) return;
+
+    RussDrawingEntitySnapshot snapshots[32] = {0};
+    NSUInteger snapshotCount = CopyDrawingEntitySnapshots(snapshots, 32);
+    CGFloat width = self.drawingOverlay.bounds.size.width;
+    CGFloat height = self.drawingOverlay.bounds.size.height;
+    for (NSUInteger index = 0; index < snapshotCount && index < self.drawingLabels.count; index++) {
+        RussDrawingEntitySnapshot snapshot = snapshots[index];
+        float screenX = 0.0f, screenY = 0.0f, depth = -1.0f;
+        if (!ProjectWorldToScreen(camera, snapshot.x, snapshot.y, snapshot.z, &screenX, &screenY, &depth) ||
+            depth <= 0.0f || screenX < 0.0f || screenX > width || screenY < 0.0f || screenY > height) continue;
+        float dx = snapshot.x - cameraX;
+        float dy = snapshot.y - cameraY;
+        float dz = snapshot.z - cameraZ;
+        float distance = sqrtf(dx * dx + dy * dy + dz * dz);
+        RussOutlinedLabel *label = self.drawingLabels[index];
+        label.frame = CGRectMake(screenX - 80.0f, height - screenY - 9.0f, 160.0f, 18.0f);
+        label.text = [NSString stringWithFormat:@"%@ %.0fm", snapshot.name ?: @"物资", distance];
+        label.hidden = NO;
+    }
+}
+/*与辞月一致使用 WorldToScreenPoint、深度过滤和 UIKit 反向 Y 坐标；名称及坐标均为当前帧快照。*/
+
 - (void)stopCoffinMarkers {
     [self.coffinDisplayLink invalidate];
     self.coffinDisplayLink = nil;
@@ -1908,6 +2163,9 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     }
     if ([self.featureStates[@"islandRoute"] boolValue]) {
         [self startIslandRouteOverlay];
+    }
+    if ([self.featureStates[@"drawing"] boolValue]) {
+        [self startDrawingOverlay];
     }
     CGFloat thirdFOV = [self sliderValueForKey:@"thirdPersonFOV"];
     CGFloat firstFOV = [self sliderValueForKey:@"firstPersonFOV"];
