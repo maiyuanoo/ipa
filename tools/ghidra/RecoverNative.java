@@ -98,6 +98,11 @@ public class RecoverNative extends GhidraScript {
         evidenceStrings.add("FindPathLineCtrl");
         evidenceStrings.add("lineRender");
         evidenceStrings.add("pointsList");
+        evidenceStrings.add("DrawPathPointLine");
+        evidenceStrings.add("InitLoadLine");
+        evidenceStrings.add("CameraFollow");
+        evidenceStrings.add("UGC2FOV");
+        evidenceStrings.add("UGC2FirstFOV");
         evidenceStrings.add("UGCObjectCoffin");
         evidenceStrings.add("DCODHFKCBGO");
         evidenceStrings.add("DGFGHBCDENH");
