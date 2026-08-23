@@ -14,8 +14,9 @@ permissions:
 
 jobs:
   recover:
-    # Ghidra 12.1.3 的反编译器在 arm64 runner 上无法加载，使用可用的 Intel macOS。
-    runs-on: macos-15-intel
+    # GitHub macOS runner 无法加载 Ghidra 12.1.3 反编译器；恢复使用已验证的 Linux 环境。
+    # 正式 arm64 dylib 的编译和二进制比对仍在 macOS 工作流执行。
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
