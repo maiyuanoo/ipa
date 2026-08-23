@@ -18,6 +18,8 @@ public class RecoverNative extends GhidraScript {
             functionName.contains("YYUnity") ||
             functionName.contains("YYIslandRoute") ||
             functionName.contains("hookui_") ||
+            functionName.startsWith("_B3m::") ||
+            functionName.startsWith("_E5w::") ||
             functionName.equals("RussIslandRouteOverlaySetEnabled") ||
             functionName.equals("RussIslandRouteOverlayShutdown");
     }
