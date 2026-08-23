@@ -186,48 +186,6 @@ static Il2CppArray *ScanObjectsByType(const char *targetClassName, BOOL includeI
 }
 /*统一扫描入口 false=object.findsoftoftype只扫激活 true=resources.findobjectsoftypeall含隐藏 */
 
-static NSUInteger SetAllComponentsVisible(BOOL visible, BOOL includeInactive) {
-    if (!ResolveIl2Cpp()) return 0;
-    Il2CppDomain *domain = gIl2CppDomainGet();
-    if (domain == NULL) return 0;
-    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
-
-    size_t assemblyCount = 0;
-    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
-    void *componentKlass = NULL;
-    void *gameObjKlass = NULL;
-    for (size_t index = 0; index < assemblyCount; index++) {
-        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
-        if (componentKlass == NULL) componentKlass = gIl2CppClassFromName(image, "UnityEngine", "Component");
-        if (gameObjKlass == NULL) gameObjKlass = gIl2CppClassFromName(image, "UnityEngine", "GameObject");
-        if (componentKlass != NULL && gameObjKlass != NULL) break;
-    }
-    if (componentKlass == NULL || gameObjKlass == NULL) return 0;
-
-    Il2CppArray *result = ScanObjectsByType("MonoBehaviour", includeInactive);
-    if (result == NULL) return 0;
-
-    const MethodInfo *getGameObject = gIl2CppClassGetMethodFromName(componentKlass, "get_gameObject", 0);
-    const MethodInfo *setActive = gIl2CppClassGetMethodFromName(gameObjKlass, "SetActive", 1);
-    if (getGameObject == NULL || setActive == NULL) return 0;
-
-    BOOL value = visible ? YES : NO;
-    void *activeArgs[] = { &value };
-    NSUInteger touched = 0;
-    Il2CppObject *exception = NULL;
-    for (uintptr_t index = 0; index < result->maxLength; index++) {
-        Il2CppObject *behaviour = result->objects[index];
-        if (behaviour == NULL) continue;
-        exception = NULL;
-        Il2CppObject *gameObject = gIl2CppRuntimeInvoke(getGameObject, behaviour, NULL, &exception);
-        if (exception != NULL || gameObject == NULL) continue;
-        exception = NULL;
-        gIl2CppRuntimeInvoke(setActive, gameObject, activeArgs, &exception);
-        if (exception == NULL) touched++;
-    }
-    return touched;
-}
-/*object.findsoftype(typeof(monobehaviour))扫描全部组件 component.get_gameobject拿节点 gameobject.setactive切显隐 */
 static void ApplyTimeScale(float multiplier) {
     if (!ResolveIl2Cpp()) return;
     Il2CppDomain *domain = gIl2CppDomainGet();
@@ -290,44 +248,6 @@ static NSUInteger SetAllLineRenderersVisible(BOOL visible, BOOL includeInactive)
     return touched;
 }
 /*object.findsoftype(typeof(linerenderer))扫描全部linerenderer renderer.set_enabled切显隐 */
-static BOOL CountLineRendererStats(NSUInteger *outLines, NSUInteger *outPoints, BOOL includeInactive) {
-    if (outLines) *outLines = 0;
-    if (outPoints) *outPoints = 0;
-    if (!ResolveIl2Cpp() || gIl2CppObjectUnbox == NULL) return NO;
-
-    size_t assemblyCount = 0;
-    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(gIl2CppDomainGet(), &assemblyCount);
-    void *lineKlass = NULL;
-    for (size_t index = 0; index < assemblyCount && lineKlass == NULL; index++) {
-        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
-        lineKlass = gIl2CppClassFromName(image, "UnityEngine", "LineRenderer");
-    }
-    if (lineKlass == NULL) return NO;
-
-    Il2CppArray *result = ScanObjectsByType("LineRenderer", includeInactive);
-    if (result == NULL) return NO;
-
-    const MethodInfo *getPositionCount = gIl2CppClassGetMethodFromName(lineKlass, "get_positionCount", 0);
-    if (getPositionCount == NULL) return NO;
-
-    NSUInteger lines = 0;
-    NSUInteger points = 0;
-    Il2CppObject *exception = NULL;
-    for (uintptr_t index = 0; index < result->maxLength; index++) {
-        Il2CppObject *line = result->objects[index];
-        if (line == NULL) continue;
-        lines++;
-        exception = NULL;
-        Il2CppObject *countObj = gIl2CppRuntimeInvoke(getPositionCount, line, NULL, &exception);
-        if (exception != NULL || countObj == NULL) continue;
-        int32_t count = *((int32_t *)gIl2CppObjectUnbox(countObj));
-        if (count > 0) points += (NSUInteger)count;
-    }
-    if (outLines) *outLines = lines;
-    if (outPoints) *outPoints = points;
-    return YES;
-}
-/*linerenderer.get_positioncount统计线数和点数 */
 static void *gCameraKlass;
 static void *gComponentKlass;
 static void *gTransformKlass;
@@ -397,76 +317,156 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 }
 /*camera.worldtoscreenpoint投影世界坐标到屏幕 */
 
-static NSUInteger CollectNearestObjects(Il2CppObject *camera, float *outWorld, float *outDistances, NSUInteger maxCount, float minDistance, BOOL includeInactive) {
-    if (outWorld == NULL || outDistances == NULL || maxCount == 0 || camera == NULL) return 0;
-    float camX = 0.0f, camY = 0.0f, camZ = 0.0f;
-    if (!GetObjectWorldPosition(camera, &camX, &camY, &camZ)) return 0;
-    Il2CppArray *result = ScanObjectsByType("MonoBehaviour", includeInactive);
-    if (result == NULL) return 0;
-
-    NSUInteger found = 0;
-    for (uintptr_t index = 0; index < result->maxLength; index++) {
-        Il2CppObject *behaviour = result->objects[index];
-        if (behaviour == NULL) continue;
-        float px = 0.0f, py = 0.0f, pz = 0.0f;
-        if (!GetObjectWorldPosition(behaviour, &px, &py, &pz)) continue;
-        float dx = px - camX;
-        float dy = py - camY;
-        float dz = pz - camZ;
-        float dist = sqrtf(dx * dx + dy * dy + dz * dz);
-        if (dist < minDistance) continue;
-        if (found < maxCount) {
-            NSUInteger slot = found;
-            found++;
-            while (slot > 0 && outDistances[slot - 1] > dist) {
-                outDistances[slot] = outDistances[slot - 1];
-                outWorld[slot * 3] = outWorld[(slot - 1) * 3];
-                outWorld[slot * 3 + 1] = outWorld[(slot - 1) * 3 + 1];
-                outWorld[slot * 3 + 2] = outWorld[(slot - 1) * 3 + 2];
-                slot--;
-            }
-            outDistances[slot] = dist;
-            outWorld[slot * 3] = px;
-            outWorld[slot * 3 + 1] = py;
-            outWorld[slot * 3 + 2] = pz;
-        } else if (dist < outDistances[maxCount - 1]) {
-            NSUInteger slot = maxCount - 1;
-            while (slot > 0 && outDistances[slot - 1] > dist) {
-                outDistances[slot] = outDistances[slot - 1];
-                outWorld[slot * 3] = outWorld[(slot - 1) * 3];
-                outWorld[slot * 3 + 1] = outWorld[(slot - 1) * 3 + 1];
-                outWorld[slot * 3 + 2] = outWorld[(slot - 1) * 3 + 2];
-                slot--;
-            }
-            outDistances[slot] = dist;
-            outWorld[slot * 3] = px;
-            outWorld[slot * 3 + 1] = py;
-            outWorld[slot * 3 + 2] = pz;
-        }
+static void *FindClassInAllAssemblies(const char *namespaceName, const char *className) {
+    if (!ResolveIl2Cpp()) return NULL;
+    Il2CppDomain *domain = gIl2CppDomainGet();
+    if (domain == NULL) return NULL;
+    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
+    size_t count = 0;
+    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &count);
+    for (size_t i = 0; i < count; i++) {
+        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[i]);
+        void *klass = gIl2CppClassFromName(image, namespaceName, className);
+        if (klass != NULL) return klass;
     }
-    return found;
+    return NULL;
 }
-/*扫描monobehaviour 按距主相机距离插入排序取最近maxcount个 跳过mindistance内(玩家自身) */
+/*跨程序集找类 含热更dll(qqpd.modules.scene等) */
+
+static Il2CppArray *ScanObjectsOfTypeInNamespace(const char *namespaceName, const char *className, BOOL includeInactive) {
+    if (!ResolveIl2Cpp() || gIl2CppClassGetTypeObject == NULL) return NULL;
+    void *targetKlass = FindClassInAllAssemblies(namespaceName, className);
+    if (targetKlass == NULL) return NULL;
+    void *hostKlass = FindClassInAllAssemblies("UnityEngine", includeInactive ? "Resources" : "Object");
+    if (hostKlass == NULL) return NULL;
+    const char *methodName = includeInactive ? "FindObjectsOfTypeAll" : "FindObjectsOfType";
+    const MethodInfo *findMethod = gIl2CppClassGetMethodFromName(hostKlass, methodName, 1);
+    if (findMethod == NULL) return NULL;
+    Il2CppObject *typeObject = gIl2CppClassGetTypeObject(targetKlass);
+    if (typeObject == NULL) return NULL;
+    Il2CppObject *exception = NULL;
+    void *arguments[] = { &typeObject };
+    return (Il2CppArray *)gIl2CppRuntimeInvoke(findMethod, NULL, arguments, &exception);
+}
+/*任意命名空间类型扫描 棺材等热更类用 */
+
+static BOOL ApplyFogRemoval(BOOL remove) {
+    void *klass = FindClassInAllAssemblies("UnityEngine", "RenderSettings");
+    if (klass == NULL || gIl2CppClassGetMethodFromName == NULL) return NO;
+    const MethodInfo *setFog = gIl2CppClassGetMethodFromName(klass, "set_fog", 1);
+    const MethodInfo *setDensity = gIl2CppClassGetMethodFromName(klass, "set_fogDensity", 1);
+    if (setFog == NULL) return NO;
+    BOOL fog = remove ? NO : YES;
+    void *fogArgs[] = { &fog };
+    Il2CppObject *exception = NULL;
+    gIl2CppRuntimeInvoke(setFog, NULL, fogArgs, &exception);
+    if (setDensity != NULL) {
+        float density = remove ? 0.0f : 0.01f;
+        void *densityArgs[] = { &density };
+        exception = NULL;
+        gIl2CppRuntimeInvoke(setDensity, NULL, densityArgs, &exception);
+    }
+    return exception == NULL;
+}
+/*rendersettings.set_fog(false)+set_fogdensity(0)去雾 dump.cs:516027/516057 恢复时fog(true)+density(0.01) */
+
+static NSUInteger ApplyHighlight(BOOL on, float brightness) {
+    void *lightKlass = FindClassInAllAssemblies("UnityEngine", "Light");
+    if (lightKlass == NULL || gIl2CppClassGetMethodFromName == NULL) return 0;
+    const MethodInfo *setIntensity = gIl2CppClassGetMethodFromName(lightKlass, "set_intensity", 1);
+    if (setIntensity == NULL) return 0;
+    Il2CppArray *lights = ScanObjectsOfTypeInNamespace("UnityEngine", "Light", YES);
+    if (lights == NULL) return 0;
+    float value = on ? brightness : 1.0f;
+    void *arguments[] = { &value };
+    NSUInteger touched = 0;
+    Il2CppObject *exception = NULL;
+    for (uintptr_t index = 0; index < lights->maxLength; index++) {
+        Il2CppObject *light = lights->objects[index];
+        if (light == NULL) continue;
+        exception = NULL;
+        gIl2CppRuntimeInvoke(setIntensity, light, arguments, &exception);
+        if (exception == NULL) touched++;
+    }
+    return touched;
+}
+/*light.set_intensity全场景灯亮度 高亮dump.cs 光照增强 关时恢复1.0 */
+
+static NSUInteger ApplyCoffinReveal(BOOL reveal) {
+    void *componentKlass = FindClassInAllAssemblies("UnityEngine", "Component");
+    void *gameObjectKlass = FindClassInAllAssemblies("UnityEngine", "GameObject");
+    if (componentKlass == NULL || gameObjectKlass == NULL) return 0;
+    const MethodInfo *getGameObject = gIl2CppClassGetMethodFromName(componentKlass, "get_gameObject", 0);
+    const MethodInfo *setActive = gIl2CppClassGetMethodFromName(gameObjectKlass, "SetActive", 1);
+    if (getGameObject == NULL || setActive == NULL) return 0;
+    Il2CppArray *coffins = ScanObjectsOfTypeInNamespace("Qqpd.Modules.Scene", "UGCObjectCoffin", YES);
+    if (coffins == NULL) return 0;
+    BOOL value = reveal ? YES : NO;
+    void *activeArgs[] = { &value };
+    NSUInteger touched = 0;
+    Il2CppObject *exception = NULL;
+    for (uintptr_t index = 0; index < coffins->maxLength; index++) {
+        Il2CppObject *coffin = coffins->objects[index];
+        if (coffin == NULL) continue;
+        exception = NULL;
+        Il2CppObject *gameObject = gIl2CppRuntimeInvoke(getGameObject, coffin, NULL, &exception);
+        if (exception != NULL || gameObject == NULL) continue;
+        exception = NULL;
+        gIl2CppRuntimeInvoke(setActive, gameObject, activeArgs, &exception);
+        if (exception == NULL) touched++;
+    }
+    return touched;
+}
+/*扫描热更dll的ugcobjectcoffin gameobject.setactive强制显示棺材透视 */
+
+static NSUInteger ApplyDemagnetization(BOOL on) {
+    void *rigidKlass = FindClassInAllAssemblies("UnityEngine", "Rigidbody");
+    if (rigidKlass == NULL || gIl2CppClassGetMethodFromName == NULL) return 0;
+    const MethodInfo *setDrag = gIl2CppClassGetMethodFromName(rigidKlass, "set_drag", 1);
+    const MethodInfo *setAngularDrag = gIl2CppClassGetMethodFromName(rigidKlass, "set_angularDrag", 1);
+    if (setDrag == NULL) return 0;
+    Il2CppArray *bodies = ScanObjectsOfTypeInNamespace("UnityEngine", "Rigidbody", YES);
+    if (bodies == NULL) return 0;
+    float drag = on ? 0.0f : 1.0f;
+    void *dragArgs[] = { &drag };
+    NSUInteger touched = 0;
+    Il2CppObject *exception = NULL;
+    for (uintptr_t index = 0; index < bodies->maxLength; index++) {
+        Il2CppObject *body = bodies->objects[index];
+        if (body == NULL) continue;
+        exception = NULL;
+        gIl2CppRuntimeInvoke(setDrag, body, dragArgs, &exception);
+        if (setAngularDrag != NULL) {
+            exception = NULL;
+            gIl2CppRuntimeInvoke(setAngularDrag, body, dragArgs, &exception);
+        }
+        if (exception == NULL) touched++;
+    }
+    return touched;
+}
+/*rigidbody.set_drag/set_angulardrag归零 消磁dump.cs:947119/947125 关时恢复1.0 */
+
 @interface RussOverlayController : NSObject
-@property(nonatomic, strong) UIView *panel;
+@property(nonatomic, strong) UIView *mainPanel;
+@property(nonatomic, strong) UIScrollView *panelScroll;
 @property(nonatomic, strong) UIButton *floatingButton;
+@property(nonatomic, strong) UIView *welcomePanel;
+@property(nonatomic, strong) UITextField *cardField;
+@property(nonatomic, strong) UILabel *welcomeHint;
+@property(nonatomic, assign) BOOL verificationPassed;
+@property(nonatomic, assign) BOOL panelVisible;
+@property(nonatomic, strong) NSMutableDictionary *featureStates;
 @property(nonatomic, assign) CGFloat firstPersonFOV;
 @property(nonatomic, assign) CGFloat thirdPersonFOV;
-@property(nonatomic, assign) CGFloat speedMultiplier;
-@property(nonatomic, assign) CGFloat cameraDistance;
-@property(nonatomic, assign) BOOL routeEnabled;
-@property(nonatomic, assign) BOOL componentsVisible;
-@property(nonatomic, strong) UILabel *componentsHint;
-@property(nonatomic, assign) BOOL espEnabled;
-@property(nonatomic, strong) CADisplayLink *espDisplayLink;
-@property(nonatomic, strong) UILabel *espHint;
-@property(nonatomic, strong) UILabel *routeHint;
-@property(nonatomic, strong) UILabel *cameraHint;
-@property(nonatomic, assign) BOOL includeInactive;
-@property(nonatomic, strong) UIView *espOverlay;
-@property(nonatomic, strong) NSMutableArray *espMarkers;
+@property(nonatomic, assign) CGFloat demagnetizationStrength;
+@property(nonatomic, assign) CGFloat globalSpeedMultiplier;
+@property(nonatomic, assign) CGFloat highlightBrightness;
+@property(nonatomic, strong) UILabel *statusHint;
+@property(nonatomic, strong) CADisplayLink *coffinDisplayLink;
+@property(nonatomic, strong) UIView *coffinOverlay;
+@property(nonatomic, strong) NSMutableArray *coffinMarkers;
 @end
-/* 悬浮ui控制器*/
+/*照原版menuview结构 mainpanel featurestates 4滑块值 验证passed 面板visible 棺材标记overlay*/
 @implementation RussOverlayController
 
 - (void)install {
@@ -491,7 +491,8 @@ static NSUInteger CollectNearestObjects(Il2CppObject *camera, float *outWorld, f
         self.floatingButton.frame = CGRectMake(18.0, 180.0, 54.0, 54.0);
         self.floatingButton.backgroundColor = [UIColor colorWithRed:0.10 green:0.55 blue:0.45 alpha:0.96];
         self.floatingButton.layer.cornerRadius = 27.0;
-        [self.floatingButton setTitle:@"R" forState:UIControlStateNormal];
+        [self.floatingButton setTitle:@"Russ" forState:UIControlStateNormal];
+        self.floatingButton.titleLabel.font = [UIFont boldSystemFontOfSize:13.0];
         [self.floatingButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
         [self.floatingButton addTarget:self action:@selector(togglePanel) forControlEvents:UIControlEventTouchUpInside];
         UIPanGestureRecognizer *buttonDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleDrag:)];
@@ -499,90 +500,270 @@ static NSUInteger CollectNearestObjects(Il2CppObject *camera, float *outWorld, f
         [self.floatingButton addGestureRecognizer:buttonDrag];
         [window addSubview:self.floatingButton];
 
-        [self buildPanelInWindow:window];
-        ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV);
-        ApplyTimeScale(self.speedMultiplier);
-        if (self.espEnabled) {
-            UISwitch *fakeSwitch = [[UISwitch alloc] init];
-            fakeSwitch.on = YES;
-            [self espChanged:fakeSwitch];
+        [self buildInterfaceInWindow:window];
+        [self restoreFeatureRuntime];
+    });
+}
+/*入口 悬浮按钮russ可拖动 点击开面板 构建ui+欢迎页 恢复上次功能状态*/
+- (void)buildInterfaceInWindow:(UIWindow *)window {
+    CGFloat screenHeight = window.bounds.size.height;
+    CGFloat scrollHeight = MIN(440.0, screenHeight - 140.0);
+
+    self.mainPanel = [[UIView alloc] initWithFrame:CGRectMake(10.0, 100.0, 300.0, scrollHeight + 44.0)];
+    self.mainPanel.backgroundColor = [UIColor colorWithWhite:0.07 alpha:0.95];
+    self.mainPanel.layer.cornerRadius = 12.0;
+    self.mainPanel.hidden = YES;
+
+    UIView *dragBar = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 300.0, 44.0)];
+    UIPanGestureRecognizer *panelDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanelDrag:)];
+    [dragBar addGestureRecognizer:panelDrag];
+    [self.mainPanel addSubview:dragBar];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 10.0, 220.0, 24.0)];
+    title.text = @"Russ公益";
+    title.textColor = UIColor.whiteColor;
+    title.font = [UIFont boldSystemFontOfSize:18.0];
+    [self.mainPanel addSubview:title];
+
+    self.panelScroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0.0, 44.0, 300.0, scrollHeight)];
+    self.panelScroll.contentSize = CGSizeMake(300.0, 688.0);
+    self.panelScroll.showsVerticalScrollIndicator = YES;
+    [self.mainPanel addSubview:self.panelScroll];
+
+    NSDictionary *cardSpecs = [self cardSpecifications];
+    NSArray *order = [self featureOrder];
+    CGFloat y = 6.0;
+    for (NSString *key in order) {
+        NSDictionary *spec = cardSpecs[key];
+        BOOL isSlider = [spec[@"slider"] boolValue];
+        CGFloat height = isSlider ? 70.0 : 66.0;
+        [self buildFeatureCard:key spec:spec frame:CGRectMake(6.0, y, 288.0, height)];
+        y += height + 4.0;
+    }
+    [window addSubview:self.mainPanel];
+    [self buildWelcomeInWindow:window];
+}
+/*主面板 russ公益 标题+44pt拖动条 uiscrollview内9张功能卡片 contentSize688可正常滚动 + 欢迎验证页*/
+
+- (NSArray *)featureOrder {
+    return @[@"highlight", @"coffin", @"fog", @"wide", @"islandRoute",
+             @"firstPersonFOV", @"thirdPersonFOV", @"demagnetization", @"globalSpeed"];
+}
+/*卡片顺序 高亮 棺材透视 去雾 广角 岛屿路线 第一人fov 第三人fov 消磁 速度 */
+
+- (NSDictionary *)cardSpecifications {
+    return @{
+        @"highlight": @{@"title": @"高亮", @"icon": @"sun.max.fill", @"desc": @"增强场景光照亮度"},
+        @"coffin": @{@"title": @"棺材透视", @"icon": @"shippingbox.fill", @"desc": @"显示所有棺材并标记位置"},
+        @"fog": @{@"title": @"去雾", @"icon": @"cloud.fog.fill", @"desc": @"关闭场景雾效"},
+        @"wide": @{@"title": @"广角视角", @"icon": @"viewfinder.circle.fill", @"desc": @"所有相机扩展到120度"},
+        @"islandRoute": @{@"title": @"岛屿路线", @"icon": @"map.fill", @"desc": @"显示 LineRenderer 路线"},
+        @"firstPersonFOV": @{@"title": @"第一人称 FOV", @"icon": @"person.crop.circle", @"slider": @YES, @"min": @30.0, @"max": @170.0, @"unit": @"°"},
+        @"thirdPersonFOV": @{@"title": @"第三人称 FOV", @"icon": @"figure.walking", @"slider": @YES, @"min": @30.0, @"max": @170.0, @"unit": @"°"},
+        @"demagnetization": @{@"title": @"消磁强度", @"icon": @"bolt.slash.fill", @"slider": @YES, @"min": @0.0, @"max": @100.0, @"unit": @"%"},
+        @"globalSpeed": @{@"title": @"速度倍率", @"icon": @"hare.fill", @"slider": @YES, @"min": @0.5, @"max": @3.0, @"unit": @"x"}
+    };
+}
+/*9张卡片定义 图标照原版sfsymbols 标题/说明/滑块范围 */
+
+- (void)buildFeatureCard:(NSString *)key spec:(NSDictionary *)spec frame:(CGRect)frame {
+    UIView *card = [[UIView alloc] initWithFrame:frame];
+    card.backgroundColor = [self.featureStates[key] boolValue] ? [UIColor colorWithWhite:0.20 alpha:0.95] : [UIColor colorWithWhite:0.14 alpha:0.95];
+    card.layer.cornerRadius = 10.0;
+    card.tag = [self cardTagForKey:key];
+    [self.panelScroll addSubview:card];
+
+    UIImage *icon = [UIImage systemImageNamed:spec[@"icon"]];
+    if (icon != nil) {
+        UIImageView *iconView = [[UIImageView alloc] initWithFrame:CGRectMake(12.0, 12.0, 24.0, 24.0)];
+        iconView.image = icon;
+        iconView.tintColor = [UIColor colorWithRed:0.30 green:0.85 blue:0.70 alpha:1.0];
+        [card addSubview:iconView];
+    }
+
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(44.0, 10.0, 160.0, 20.0)];
+    titleLabel.text = spec[@"title"];
+    titleLabel.textColor = UIColor.whiteColor;
+    titleLabel.font = [UIFont boldSystemFontOfSize:14.0];
+    [card addSubview:titleLabel];
+
+    if ([spec[@"slider"] boolValue]) {
+        CGFloat value = [self sliderValueForKey:key];
+        UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(10.0, 40.0, 196.0, 24.0)];
+        slider.minimumValue = [spec[@"min"] floatValue];
+        slider.maximumValue = [spec[@"max"] floatValue];
+        slider.value = value;
+        slider.tag = [self cardTagForKey:key];
+        [slider addTarget:self action:@selector(featureSliderChanged:) forControlEvents:UIControlEventValueChanged];
+        [card addSubview:slider];
+
+        UILabel *valueLabel = [[UILabel alloc] initWithFrame:CGRectMake(208.0, 10.0, 70.0, 20.0)];
+        valueLabel.tag = 91;
+        valueLabel.text = [self formatSliderValue:value spec:spec];
+        valueLabel.textColor = [UIColor colorWithRed:0.30 green:0.85 blue:0.70 alpha:1.0];
+        valueLabel.font = [UIFont boldSystemFontOfSize:13.0];
+        valueLabel.textAlignment = NSTextAlignmentRight;
+        [card addSubview:valueLabel];
+    } else {
+        UILabel *descLabel = [[UILabel alloc] initWithFrame:CGRectMake(44.0, 32.0, 172.0, 14.0)];
+        descLabel.tag = 90;
+        descLabel.text = spec[@"desc"];
+        descLabel.textColor = [UIColor colorWithWhite:0.62 alpha:1.0];
+        descLabel.font = [UIFont systemFontOfSize:10.0];
+        [card addSubview:descLabel];
+
+        UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectMake(224.0, 18.0, 51.0, 31.0)];
+        toggle.on = [self.featureStates[key] boolValue];
+        toggle.tag = [self cardTagForKey:key];
+        [toggle addTarget:self action:@selector(featureToggleChanged:) forControlEvents:UIControlEventValueChanged];
+        [card addSubview:toggle];
+    }
+}
+/*功能卡片 图标+标题+说明+开关或滑块 开关卡背景随激活变亮 照原版featurecard.active */
+
+- (NSInteger)cardTagForKey:(NSString *)key {
+    NSArray *order = [self featureOrder];
+    NSUInteger index = [order indexOfObject:key];
+    if (index == NSNotFound) return 0;
+    return 1000 + (NSInteger)index;
+}
+/*key→tag(1000+序号) */
+
+- (NSString *)keyForCardTag:(NSInteger)tag {
+    NSArray *order = [self featureOrder];
+    NSInteger index = tag - 1000;
+    if (index < 0 || index >= (NSInteger)order.count) return nil;
+    return order[index];
+}
+/*tag→key */
+
+- (CGFloat)sliderValueForKey:(NSString *)key {
+    NSNumber *saved = self.featureStates[key];
+    if ([saved isKindOfClass:[NSNumber class]]) return saved.floatValue;
+    if ([key isEqualToString:@"firstPersonFOV"]) return 75.0;
+    if ([key isEqualToString:@"thirdPersonFOV"]) return 75.0;
+    if ([key isEqualToString:@"demagnetization"]) return 50.0;
+    if ([key isEqualToString:@"globalSpeed"]) return 1.0;
+    return 0.0;
+}
+/*滑块当前值 featurestates存了用存的 否则默认 */
+
+- (NSString *)formatSliderValue:(CGFloat)value spec:(NSDictionary *)spec {
+    NSString *unit = spec[@"unit"];
+    if ([unit isEqualToString:@"x"]) return [NSString stringWithFormat:@"%.1fx", value];
+    if ([unit isEqualToString:@"%"]) return [NSString stringWithFormat:@"%.0f%%", value];
+    return [NSString stringWithFormat:@"%.0f°", value];
+}
+/*滑块值格式化 %.1fx %.0f%% %.0f° 照原版格式 */
+
+- (void)buildWelcomeInWindow:(UIWindow *)window {
+    if (self.verificationPassed) return;
+    self.welcomePanel = [[UIView alloc] initWithFrame:CGRectMake(40.0, 180.0, 240.0, 260.0)];
+    self.welcomePanel.backgroundColor = [UIColor colorWithWhite:0.07 alpha:0.97];
+    self.welcomePanel.layer.cornerRadius = 12.0;
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(20.0, 22.0, 200.0, 26.0)];
+    title.text = @"欢迎使用 Russ公益";
+    title.textColor = UIColor.whiteColor;
+    title.font = [UIFont boldSystemFontOfSize:17.0];
+    title.textAlignment = NSTextAlignmentCenter;
+    [self.welcomePanel addSubview:title];
+
+    UILabel *subtitle = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 52.0, 208.0, 16.0)];
+    subtitle.text = @"请输入卡密以进入 Russ公益";
+    subtitle.textColor = [UIColor colorWithWhite:0.62 alpha:1.0];
+    subtitle.font = [UIFont systemFontOfSize:12.0];
+    subtitle.textAlignment = NSTextAlignmentCenter;
+    [self.welcomePanel addSubview:subtitle];
+
+    self.cardField = [[UITextField alloc] initWithFrame:CGRectMake(20.0, 84.0, 200.0, 36.0)];
+    self.cardField.backgroundColor = [UIColor colorWithWhite:0.15 alpha:1.0];
+    self.cardField.layer.cornerRadius = 8.0;
+    self.cardField.textColor = UIColor.whiteColor;
+    self.cardField.font = [UIFont systemFontOfSize:14.0];
+    self.cardField.placeholder = @"请输入卡密";
+    self.cardField.textAlignment = NSTextAlignmentCenter;
+    [self.welcomePanel addSubview:self.cardField];
+
+    UIButton *verifyButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    verifyButton.frame = CGRectMake(20.0, 132.0, 200.0, 38.0);
+    verifyButton.backgroundColor = [UIColor colorWithRed:0.10 green:0.55 blue:0.45 alpha:1.0];
+    verifyButton.layer.cornerRadius = 8.0;
+    [verifyButton setTitle:@"在线验证" forState:UIControlStateNormal];
+    [verifyButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    verifyButton.titleLabel.font = [UIFont boldSystemFontOfSize:14.0];
+    [verifyButton addTarget:self action:@selector(beginVerificationFlow) forControlEvents:UIControlEventTouchUpInside];
+    [self.welcomePanel addSubview:verifyButton];
+
+    UIButton *enterButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    enterButton.frame = CGRectMake(20.0, 178.0, 200.0, 38.0);
+    enterButton.backgroundColor = [UIColor colorWithWhite:0.20 alpha:1.0];
+    enterButton.layer.cornerRadius = 8.0;
+    [enterButton setTitle:@"进入 Russ公益" forState:UIControlStateNormal];
+    [enterButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    enterButton.titleLabel.font = [UIFont boldSystemFontOfSize:14.0];
+    [enterButton addTarget:self action:@selector(applyAuthorization) forControlEvents:UIControlEventTouchUpInside];
+    [self.welcomePanel addSubview:enterButton];
+
+    self.welcomeHint = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 226.0, 208.0, 16.0)];
+    self.welcomeHint.text = @"";
+    self.welcomeHint.textColor = [UIColor colorWithWhite:0.62 alpha:1.0];
+    self.welcomeHint.font = [UIFont systemFontOfSize:11.0];
+    self.welcomeHint.textAlignment = NSTextAlignmentCenter;
+    [self.welcomePanel addSubview:self.welcomeHint];
+
+    [window addSubview:self.welcomePanel];
+}
+/*欢迎验证页照原版 欢迎使用russ公益/请输入卡密以进入/卡密输入框/在线验证/进入russ公益 */
+
+- (void)beginVerificationFlow {
+    self.welcomeHint.text = @"（验证中...）";
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self.welcomeHint != nil) {
+            self.welcomeHint.text = @"（验证通过，点击下方按钮进入）";
         }
     });
 }
-/* ui初始化入口*/
-- (void)buildPanelInWindow:(UIWindow *)window {
-    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 110.0, 280.0, 432.0)];
-    self.panel.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
-    self.panel.layer.cornerRadius = 8.0;
-    self.panel.hidden = YES;
+/*在线验证按钮 本地模拟验证流程(无服务器) */
 
-    UIView *dragBar = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 280.0, 38.0)];
-    UIPanGestureRecognizer *panelDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanelDrag:)];
-    [dragBar addGestureRecognizer:panelDrag];
-    [self.panel addSubview:dragBar];
-
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 8.0, 210.0, 24.0)];
-    title.text = @"视角调试";
-    title.textColor = UIColor.whiteColor;
-    title.font = [UIFont boldSystemFontOfSize:17.0];
-    [self.panel addSubview:title];
-
-    [self addSliderWithTitle:@"第一人称 FOV" value:self.firstPersonFOV minimum:30.0 maximum:170.0 y:44.0 action:@selector(firstPersonFOVChanged:)];
-    [self addSliderWithTitle:@"第三人称 FOV" value:self.thirdPersonFOV minimum:30.0 maximum:170.0 y:98.0 action:@selector(thirdPersonFOVChanged:)];
-    [self addSliderWithTitle:@"速度倍率" value:self.speedMultiplier minimum:0.5 maximum:3.0 y:152.0 action:@selector(speedChanged:)];
-
-    [self addSwitchRowWithTitle:@"包含隐藏对象" on:self.includeInactive y:206.0 action:@selector(inactiveChanged:)];
-    [self addSwitchRowWithTitle:@"路线显示" on:self.routeEnabled y:248.0 action:@selector(routeChanged:)];
-    self.routeHint = [self addHintAtY:280.0 text:@"（LineRenderer 待扫描）"];
-    [self addSwitchRowWithTitle:@"组件显隐" on:self.componentsVisible y:298.0 action:@selector(componentsChanged:)];
-    self.componentsHint = [self addHintAtY:330.0 text:@"（待扫描）"];
-    [self addSwitchRowWithTitle:@"ESP 距离" on:self.espEnabled y:348.0 action:@selector(espChanged:)];
-    self.espHint = [self addHintAtY:380.0 text:@"（已关闭）"];
-    self.cameraHint = [self addHintAtY:402.0 text:@"（FOV 待应用）"];
-    [window addSubview:self.panel];
+- (void)applyAuthorization {
+    self.verificationPassed = YES;
+    [NSUserDefaults.standardUserDefaults setBool:YES forKey:@"RussPublic.ThomeAuth.SavedCard.v1"];
+    [self.welcomePanel removeFromSuperview];
+    self.welcomePanel = nil;
+    self.cardField = nil;
+    self.welcomeHint = nil;
+    [self setPanelVisible:YES animated:YES];
 }
-/* 深色半透明面板 顶部38pt拖动条 紧凑布局无滚动 包含隐藏对象排第四位直接可见 面板加在顶层window*/
-- (void)addSwitchRowWithTitle:(NSString *)title on:(BOOL)on y:(CGFloat)y action:(SEL)action {
-    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(16.0, y, 190.0, 28.0)];
-    label.text = title;
-    label.textColor = UIColor.whiteColor;
-    label.font = [UIFont systemFontOfSize:14.0];
-    [self.panel addSubview:label];
-
-    UISwitch *sw = [[UISwitch alloc] initWithFrame:CGRectMake(213.0, y, 51.0, 28.0)];
-    sw.on = on;
-    [sw addTarget:self action:action forControlEvents:UIControlEventValueChanged];
-    [self.panel addSubview:sw];
-}
-/*开关行封装 标签+开关 */
-- (UILabel *)addHintAtY:(CGFloat)y text:(NSString *)text {
-    UILabel *hint = [[UILabel alloc] initWithFrame:CGRectMake(16.0, y, 248.0, 14.0)];
-    hint.text = text;
-    hint.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
-    hint.font = [UIFont systemFontOfSize:11.0];
-    [self.panel addSubview:hint];
-    return hint;
-}
-/*提示行封装 灰色小字 */
-- (void)addSliderWithTitle:(NSString *)title value:(CGFloat)value minimum:(CGFloat)minimum maximum:(CGFloat)maximum y:(CGFloat)y action:(SEL)action {
-    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(16.0, y, 210.0, 20.0)];
-    label.text = title;
-    label.textColor = UIColor.whiteColor;
-    label.font = [UIFont systemFontOfSize:13.0];
-    [self.panel addSubview:label];
-
-    UISlider *slider = [[UISlider alloc] initWithFrame:CGRectMake(16.0, y + 24.0, 218.0, 22.0)];
-    slider.minimumValue = minimum;
-    slider.maximumValue = maximum;
-    slider.value = value;
-    [slider addTarget:self action:action forControlEvents:UIControlEventValueChanged];
-    [self.panel addSubview:slider];
-}
-/*滑块封装工具方法 */
+/*进入russ公益 关闭欢迎页 打开主面板 verificationpassed=true照原版 */
 - (void)togglePanel {
-    self.panel.hidden = !self.panel.hidden;
+    [self setPanelVisible:!self.panelVisible animated:YES];
 }
-/*点击隐藏悬浮 */
+/*点击悬浮按钮开/关主面板 */
+- (void)closePanel {
+    [self setPanelVisible:NO animated:YES];
+}
+/*关闭主面板 照原版方法名 */
+- (void)setPanelVisible:(BOOL)visible animated:(BOOL)animated {
+    self.panelVisible = visible;
+    void (^apply)(void) = ^{
+        self.mainPanel.hidden = !visible;
+        self.mainPanel.alpha = visible ? 1.0 : 0.0;
+    };
+    if (animated) {
+        [UIView animateWithDuration:0.22 animations:apply];
+    } else {
+        apply();
+    }
+}
+/*面板显隐动画 照原版setpanelvisible:animated */
+- (void)show {
+    [self setPanelVisible:YES animated:YES];
+}
+- (void)hide {
+    [self setPanelVisible:NO animated:YES];
+}
+/*show/hide 照原版 */
 - (void)handleDrag:(UIPanGestureRecognizer *)gesture {
     UIView *view = gesture.view;
     UIView *container = view.superview;
@@ -604,9 +785,9 @@ static NSUInteger CollectNearestObjects(Il2CppObject *camera, float *outWorld, f
     view.center = center;
     [gesture setTranslation:CGPointMake(0.0, 0.0) inView:container];
 }
-/*手指拖动悬浮按钮或面板 限制中心点不超出安全区域 */
+/*手指拖动悬浮按钮 限制中心点不超出安全区域 */
 - (void)handlePanelDrag:(UIPanGestureRecognizer *)gesture {
-    UIView *view = self.panel;
+    UIView *view = self.mainPanel;
     UIView *container = view.superview;
     if (view == nil || container == nil) return;
     CGPoint translation = [gesture translationInView:container];
@@ -626,151 +807,221 @@ static NSUInteger CollectNearestObjects(Il2CppObject *camera, float *outWorld, f
     view.center = center;
     [gesture setTranslation:CGPointMake(0.0, 0.0) inView:container];
 }
-/*拖动面板顶部38pt拖动条 移动整个面板 不与滑块开关冲突 */
-- (void)firstPersonFOVChanged:(UISlider *)sender {
-    self.firstPersonFOV = sender.value;
-    [self saveSettings];
-    ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV);
-    NSUInteger touched = ApplyFieldOfView(self.firstPersonFOV);
-    self.cameraHint.text = [NSString stringWithFormat:@"（FOV 已应用 %lu 个相机）", (unsigned long)touched];
+/*拖动面板顶部44pt拖动条 移动整个面板 不与卡片滑动冲突 */
+
+- (void)featureToggleChanged:(UISwitch *)sender {
+    NSString *key = [self keyForCardTag:sender.tag];
+    if (key == nil) return;
+    [self setFeature:key enabled:sender.isOn notify:YES persist:YES];
 }
-- (void)thirdPersonFOVChanged:(UISlider *)sender {
-    self.thirdPersonFOV = sender.value;
+/*统一开关回调 按tag找key 走setfeature分发 照原版featuretogglechanged */
+
+- (void)featureSliderChanged:(UISlider *)sender {
+    NSString *key = [self keyForCardTag:sender.tag];
+    if (key == nil) return;
+    NSDictionary *spec = [self cardSpecifications][key];
+    self.featureStates[key] = @(sender.value);
+    if ([key isEqualToString:@"firstPersonFOV"] || [key isEqualToString:@"thirdPersonFOV"]) {
+        ApplyCameraFollow([self sliderValueForKey:@"thirdPersonFOV"], [self sliderValueForKey:@"firstPersonFOV"]);
+        ApplyFieldOfView(sender.value);
+    } else if ([key isEqualToString:@"globalSpeed"]) {
+        ApplyTimeScale(sender.value);
+    } else if ([key isEqualToString:@"demagnetization"]) {
+        ApplyDemagnetization(YES);
+    }
+    [self updateCardValueLabel:key spec:spec];
     [self saveSettings];
-    ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV);
-    NSUInteger touched = ApplyFieldOfView(self.thirdPersonFOV);
-    self.cameraHint.text = [NSString stringWithFormat:@"（FOV 已应用 %lu 个相机）", (unsigned long)touched];
 }
-- (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; ApplyTimeScale(sender.value); }
-- (void)routeChanged:(UISwitch *)sender {
-    self.routeEnabled = sender.isOn;
-    [self saveSettings];
-    NSUInteger count = SetAllLineRenderersVisible(sender.isOn, self.includeInactive);
-    NSUInteger lines = 0, points = 0;
-    CountLineRendererStats(&lines, &points, self.includeInactive);
-    self.routeHint.text = [NSString stringWithFormat:@"（%@ %lu 条线, %lu 个点）", sender.isOn ? @"已显示" : @"已隐藏", (unsigned long)count, (unsigned long)points];
-}
-- (void)componentsChanged:(UISwitch *)sender {
-    self.componentsVisible = sender.isOn;
-    [self saveSettings];
-    NSUInteger count = SetAllComponentsVisible(sender.isOn, self.includeInactive);
-    self.componentsHint.text = [NSString stringWithFormat:@"（%@ %lu 个）", sender.isOn ? @"已显示" : @"已隐藏", (unsigned long)count];
-}
-- (void)espChanged:(UISwitch *)sender {
-    self.espEnabled = sender.isOn;
-    [self saveSettings];
-    if (sender.isOn) {
-        [self ensureEspOverlay];
-        self.espHint.text = @"（扫描中...）";
-        self.espDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateESP)];
-        [self.espDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
-    } else {
-        [self.espDisplayLink invalidate];
-        self.espDisplayLink = nil;
-        [self.espOverlay removeFromSuperview];
-        self.espOverlay = nil;
-        self.espMarkers = nil;
-        self.espHint.text = @"（已关闭）";
+/*统一滑块回调 fov→camerafollow+相机 fov 速度→timescale 消磁→rigidbody drag归零 更新值标签 照原版featuresliderchanged */
+
+- (void)updateCardValueLabel:(NSString *)key spec:(NSDictionary *)spec {
+    NSInteger tag = [self cardTagForKey:key];
+    for (UIView *card in self.panelScroll.subviews) {
+        if (card.tag != tag) continue;
+        for (UIView *sub in card.subviews) {
+            if (sub.tag == 91 && [sub isKindOfClass:[UILabel class]]) {
+                UILabel *valueLabel = (UILabel *)sub;
+                valueLabel.text = [self formatSliderValue:[self sliderValueForKey:key] spec:spec];
+            }
+        }
     }
 }
-/*esp开关 on建overlay+8标记池 cadisplaylink每帧回调 off停帧移除overlay */
-- (void)ensureEspOverlay {
-    if (self.espOverlay != nil) return;
+/*找到卡片上的值标签刷新文本 */
+
+- (void)setFeature:(NSString *)key enabled:(BOOL)enabled notify:(BOOL)notify persist:(BOOL)persist {
+    self.featureStates[key] = @(enabled);
+    if (persist) [self saveSettings];
+    [self updateCardAppearance:key enabled:enabled];
+    if (!notify) return;
+
+    if ([key isEqualToString:@"highlight"]) {
+        NSUInteger count = ApplyHighlight(enabled, 2.5f);
+        [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"已增强 %lu 盏灯", (unsigned long)count] : @"已恢复默认亮度"]];
+    } else if ([key isEqualToString:@"coffin"]) {
+        NSUInteger count = ApplyCoffinReveal(enabled);
+        if (enabled) {
+            [self startCoffinMarkers];
+            [self setCardHint:key text:[NSString stringWithFormat:@"已显示 %lu 个棺材", (unsigned long)count]];
+        } else {
+            [self stopCoffinMarkers];
+            [self setCardHint:key text:@"已关闭棺材透视"];
+        }
+    } else if ([key isEqualToString:@"fog"]) {
+        ApplyFogRemoval(enabled);
+        [self setCardHint:key text:enabled ? @"雾效已关闭" : @"雾效已恢复"];
+    } else if ([key isEqualToString:@"wide"]) {
+        NSUInteger count = enabled ? ApplyFieldOfView(120.0) : ApplyFieldOfView([self sliderValueForKey:@"thirdPersonFOV"]);
+        [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"%lu 个相机已扩展", (unsigned long)count] : @"已恢复默认视角"]];
+    } else if ([key isEqualToString:@"islandRoute"]) {
+        NSUInteger count = SetAllLineRenderersVisible(enabled, YES);
+        [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"已显示 %lu 条路线", (unsigned long)count] : @"已隐藏所有路线"]];
+    }
+}
+/*功能分发 照原版setfeature:enabled:notify:persist: highlight→light.intensity coffin→setactive+标记 fog→rendersettings wide→相机fov islandroute→linerenderer */
+
+- (void)setCardHint:(NSString *)key text:(NSString *)text {
+    NSInteger tag = [self cardTagForKey:key];
+    for (UIView *card in self.panelScroll.subviews) {
+        if (card.tag != tag) continue;
+        for (UIView *sub in card.subviews) {
+            if (sub.tag == 90 && [sub isKindOfClass:[UILabel class]]) {
+                UILabel *hint = (UILabel *)sub;
+                hint.text = text;
+            }
+        }
+    }
+}
+/*更新卡片说明行为状态文字 */
+
+- (void)updateCardAppearance:(NSString *)key enabled:(BOOL)enabled {
+    NSInteger tag = [self cardTagForKey:key];
+    for (UIView *card in self.panelScroll.subviews) {
+        if (card.tag == tag) {
+            card.backgroundColor = enabled ? [UIColor colorWithWhite:0.20 alpha:0.95] : [UIColor colorWithWhite:0.14 alpha:0.95];
+        }
+    }
+}
+/*卡片激活背景变亮 照原版featurecard.setactive */
+- (void)startCoffinMarkers {
+    if (self.coffinDisplayLink != nil) return;
     UIWindow *window = self.floatingButton.window;
     if (window == nil) return;
-    self.espOverlay = [[UIView alloc] initWithFrame:window.bounds];
-    self.espOverlay.backgroundColor = [UIColor clearColor];
-    self.espOverlay.userInteractionEnabled = NO;
-    self.espMarkers = [NSMutableArray arrayWithCapacity:8];
+    self.coffinOverlay = [[UIView alloc] initWithFrame:window.bounds];
+    self.coffinOverlay.backgroundColor = [UIColor clearColor];
+    self.coffinOverlay.userInteractionEnabled = NO;
+    self.coffinMarkers = [NSMutableArray arrayWithCapacity:8];
     for (NSInteger i = 0; i < 8; i++) {
-        UIView *marker = [self buildEspMarker];
-        [self.espMarkers addObject:marker];
-        [self.espOverlay addSubview:marker];
+        UIView *marker = [self buildCoffinMarker];
+        [self.coffinMarkers addObject:marker];
+        [self.coffinOverlay addSubview:marker];
     }
-    [window addSubview:self.espOverlay];
+    [window addSubview:self.coffinOverlay];
+    self.coffinDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateCoffinMarkers)];
+    [self.coffinDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
-/*全屏透明overlay不挡点击 内含8个标记 */
-- (UIView *)buildEspMarker {
-    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(-100.0, -100.0, 64.0, 36.0)];
+/*棺材透视开启 全屏透明overlay+8标记池 cadisplaylink每帧 照原版islandroute的displaylink架构 */
+
+- (void)stopCoffinMarkers {
+    [self.coffinDisplayLink invalidate];
+    self.coffinDisplayLink = nil;
+    [self.coffinOverlay removeFromSuperview];
+    self.coffinOverlay = nil;
+    self.coffinMarkers = nil;
+}
+/*棺材透视关闭 停帧移除overlay */
+
+- (UIView *)buildCoffinMarker {
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(-100.0, -100.0, 64.0, 38.0)];
     container.userInteractionEnabled = NO;
     UIView *box = [[UIView alloc] initWithFrame:CGRectMake(21.0, 0.0, 22.0, 22.0)];
-    box.backgroundColor = [UIColor colorWithRed:1.0 green:0.18 blue:0.18 alpha:0.85];
+    box.backgroundColor = [UIColor colorWithRed:0.95 green:0.55 blue:0.10 alpha:0.85];
     box.layer.cornerRadius = 4.0;
     box.layer.borderColor = [UIColor whiteColor].CGColor;
     box.layer.borderWidth = 1.5;
     [container addSubview:box];
-    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0.0, 24.0, 64.0, 12.0)];
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0.0, 26.0, 64.0, 12.0)];
     label.tag = 101;
     label.font = [UIFont systemFontOfSize:10.0];
     label.textColor = UIColor.whiteColor;
     label.textAlignment = NSTextAlignmentCenter;
     label.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.55];
+    label.text = @"棺材";
     [container addSubview:label];
     container.hidden = YES;
     return container;
 }
-/*单个esp标记 22x22红框白边+距离文字 */
-- (void)updateESP {
-    if (!self.espEnabled || self.espOverlay == nil || self.espMarkers == nil) return;
-    NSUInteger shown = 0;
+/*单个棺材标记 橙色方框白边+文字 */
+
+- (void)updateCoffinMarkers {
+    if (self.coffinOverlay == nil || self.coffinMarkers == nil) return;
     Il2CppObject *camera = GetMainCameraObject();
-    if (camera != NULL) {
-        float world[24];
-        float distances[8];
-        NSUInteger count = CollectNearestObjects(camera, world, distances, 8, 3.0f, self.includeInactive);
-        CGFloat screenW = self.espOverlay.bounds.size.width;
-        CGFloat screenH = self.espOverlay.bounds.size.height;
-        for (NSUInteger i = 0; i < self.espMarkers.count; i++) {
-            UIView *marker = self.espMarkers[i];
-            float sx = 0.0f, sy = 0.0f, sz = -1.0f;
-            if (i < count && ProjectWorldToScreen(camera, world[i * 3], world[i * 3 + 1], world[i * 3 + 2], &sx, &sy, &sz) && sz > 0.0f && sx >= 0.0f && sx <= screenW) {
-                marker.frame = CGRectMake((CGFloat)sx - 32.0, screenH - (CGFloat)sy - 18.0, 64.0, 36.0);
-                UILabel *label = (UILabel *)[marker viewWithTag:101];
-                if (label != nil) label.text = [NSString stringWithFormat:@"%.0f米", distances[i]];
-                marker.hidden = NO;
-                shown++;
-            } else {
-                marker.hidden = YES;
-            }
-        }
-    } else {
-        for (NSUInteger i = 0; i < self.espMarkers.count; i++) {
-            UIView *marker = self.espMarkers[i];
-            marker.hidden = YES;
-        }
+    if (camera == NULL) return;
+    Il2CppArray *coffins = ScanObjectsOfTypeInNamespace("Qqpd.Modules.Scene", "UGCObjectCoffin", YES);
+    float camX = 0.0f, camY = 0.0f, camZ = 0.0f;
+    GetObjectWorldPosition(camera, &camX, &camY, &camZ);
+    CGFloat screenW = self.coffinOverlay.bounds.size.width;
+    CGFloat screenH = self.coffinOverlay.bounds.size.height;
+    NSUInteger shown = 0;
+    for (NSUInteger i = 0; i < self.coffinMarkers.count; i++) {
+        UIView *marker = self.coffinMarkers[i];
+        marker.hidden = YES;
+        if (coffins == NULL || i >= coffins->maxLength) continue;
+        Il2CppObject *coffin = coffins->objects[i];
+        if (coffin == NULL) continue;
+        float wx = 0.0f, wy = 0.0f, wz = 0.0f;
+        if (!GetObjectWorldPosition(coffin, &wx, &wy, &wz)) continue;
+        float sx = 0.0f, sy = 0.0f, sz = -1.0f;
+        if (!ProjectWorldToScreen(camera, wx, wy, wz, &sx, &sy, &sz)) continue;
+        if (sz <= 0.0f || sx < 0.0f || sx > screenW) continue;
+        float dx = wx - camX, dy = wy - camY, dz = wz - camZ;
+        float dist = sqrtf(dx * dx + dy * dy + dz * dz);
+        marker.frame = CGRectMake((CGFloat)sx - 32.0, screenH - (CGFloat)sy - 19.0, 64.0, 38.0);
+        UILabel *label = (UILabel *)[marker viewWithTag:101];
+        if (label != nil) label.text = [NSString stringWithFormat:@"%.0f米", dist];
+        marker.hidden = NO;
+        shown++;
     }
-    self.espHint.text = shown > 0 ? [NSString stringWithFormat:@"（实时标记 %lu 个）", (unsigned long)shown] : @"（范围内无对象）";
 }
-/*每帧 取主相机 collect最近8个(跳过3米内自身) 逐个worldtoscreen投影 移动标记+更新距离文字 镜头后(z<=0)或出屏隐藏 */
-- (void)inactiveChanged:(UISwitch *)sender {
-    self.includeInactive = sender.isOn;
-    [self saveSettings];
+/*每帧 扫描ugcobjectcoffin 取前8个 worldtoscreen投影 橙框+距离文字 镜头后或出屏隐藏 */
+
+- (void)restoreFeatureRuntime {
+    if ([self.featureStates[@"highlight"] boolValue]) ApplyHighlight(YES, 2.5f);
+    if ([self.featureStates[@"coffin"] boolValue]) {
+        ApplyCoffinReveal(YES);
+        [self startCoffinMarkers];
+    }
+    if ([self.featureStates[@"fog"] boolValue]) ApplyFogRemoval(YES);
+    if ([self.featureStates[@"wide"] boolValue]) ApplyFieldOfView(120.0);
+    if ([self.featureStates[@"islandRoute"] boolValue]) SetAllLineRenderersVisible(YES, YES);
+    ApplyCameraFollow([self sliderValueForKey:@"thirdPersonFOV"], [self sliderValueForKey:@"firstPersonFOV"]);
+    ApplyTimeScale([self sliderValueForKey:@"globalSpeed"]);
+    if ([self.featureStates[@"demagnetization"] boolValue] || [self sliderValueForKey:@"demagnetization"] > 0.0) {
+        ApplyDemagnetization(YES);
+    }
 }
-/*fov滑块拖动 更新成员变量 savesetting永久化 立刻调用applycamerafollow刷新游戏视角 同时applyfieldofview过滤正交/RT相机写fov 速度滑块调time.set_timescale 路线开关扫描linerenderer并renderer.set_enabled + get_positioncount统计 组件开关扫描monobehaviour拿gameobject.setactive切显隐 ESP开关扫描monobehaviour算vector3距离 包含隐藏开关切findobjectsoftype/findobjectsoftypeall */
+/*启动恢复上次功能状态 照原版restorefeatureruntime 开着的开关重新apply 滑块值重新写入 */
+
 - (void)loadSettings {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    self.firstPersonFOV = [defaults objectForKey:@"russ.firstFOV"] ? [defaults floatForKey:@"russ.firstFOV"] : 75.0;
-    self.thirdPersonFOV = [defaults objectForKey:@"russ.thirdFOV"] ? [defaults floatForKey:@"russ.thirdFOV"] : 75.0;
-    self.speedMultiplier = [defaults objectForKey:@"russ.speed"] ? [defaults floatForKey:@"russ.speed"] : 1.0;
-    self.cameraDistance = [defaults objectForKey:@"russ.distance"] ? [defaults floatForKey:@"russ.distance"] : 8.0;
-    self.routeEnabled = [defaults boolForKey:@"russ.route"];
-    self.componentsVisible = [defaults boolForKey:@"russ.components"];
-    self.espEnabled = [defaults boolForKey:@"russ.esp"];
-    self.includeInactive = [defaults boolForKey:@"russ.inactive"];
+    NSDictionary *saved = [defaults dictionaryForKey:@"RussPublic.Menu.Configuration.v1"];
+    if (saved != nil && [saved isKindOfClass:[NSDictionary class]]) {
+        self.featureStates = [NSMutableDictionary dictionaryWithDictionary:saved];
+    } else {
+        self.featureStates = [NSMutableDictionary dictionary];
+    }
+    self.firstPersonFOV = [self sliderValueForKey:@"firstPersonFOV"];
+    self.thirdPersonFOV = [self sliderValueForKey:@"thirdPersonFOV"];
+    self.demagnetizationStrength = [self sliderValueForKey:@"demagnetization"];
+    self.globalSpeedMultiplier = [self sliderValueForKey:@"globalSpeed"];
+    self.verificationPassed = [defaults boolForKey:@"RussPublic.ThomeAuth.SavedCard.v1"];
 }
-/* 加载本地持久化配置 从系统nsuserdefaults读取上次保存参数 不存在设置的默认值*/
+/*读配置 key照原版russpublic.menu.configuration.v1 字典结构 featurestates一次存全部 */
+
 - (void)saveSettings {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    [defaults setFloat:self.firstPersonFOV forKey:@"russ.firstFOV"];
-    [defaults setFloat:self.thirdPersonFOV forKey:@"russ.thirdFOV"];
-    [defaults setFloat:self.speedMultiplier forKey:@"russ.speed"];
-    [defaults setFloat:self.cameraDistance forKey:@"russ.distance"];
-    [defaults setBool:self.routeEnabled forKey:@"russ.route"];
-    [defaults setBool:self.componentsVisible forKey:@"russ.components"];
-    [defaults setBool:self.espEnabled forKey:@"russ.esp"];
-    [defaults setBool:self.includeInactive forKey:@"russ.inactive"];
+    [defaults setObject:self.featureStates forKey:@"RussPublic.Menu.Configuration.v1"];
 }
-/* 保存配置到本地 下次打开延用fov*/
+/*存配置 整个featurestates字典一次写入 照原版 */
 @end
 
 static RussOverlayController *gOverlayController;
