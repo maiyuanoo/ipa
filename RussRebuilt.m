@@ -327,8 +327,11 @@ static BOOL CountLineRendererStats(NSUInteger *outLines, NSUInteger *outPoints, 
     return YES;
 }
 /*linerenderer.get_positioncount统计线数和点数 */
-static BOOL FindNearestObjectDistance(float *outDistance, BOOL includeInactive) {
+static BOOL UpdateESPVisual(float *outDistance, float *outScreenX, float *outScreenY, float *outScreenZ, BOOL includeInactive) {
     if (outDistance) *outDistance = 0.0f;
+    if (outScreenX) *outScreenX = 0.0f;
+    if (outScreenY) *outScreenY = 0.0f;
+    if (outScreenZ) *outScreenZ = -1.0f;
     if (!ResolveIl2Cpp() || gIl2CppObjectUnbox == NULL) return NO;
     Il2CppDomain *domain = gIl2CppDomainGet();
     if (domain == NULL) return NO;
@@ -351,7 +354,8 @@ static BOOL FindNearestObjectDistance(float *outDistance, BOOL includeInactive) 
     const MethodInfo *getMain = gIl2CppClassGetMethodFromName(cameraKlass, "get_main", 0);
     const MethodInfo *getTransform = gIl2CppClassGetMethodFromName(componentKlass, "get_transform", 0);
     const MethodInfo *getPosition = gIl2CppClassGetMethodFromName(transformKlass, "get_position", 0);
-    if (getMain == NULL || getTransform == NULL || getPosition == NULL) return NO;
+    const MethodInfo *worldToScreen = gIl2CppClassGetMethodFromName(cameraKlass, "WorldToScreenPoint", 1);
+    if (getMain == NULL || getTransform == NULL || getPosition == NULL || worldToScreen == NULL) return NO;
 
     Il2CppObject *exception = NULL;
     Il2CppObject *mainCam = gIl2CppRuntimeInvoke(getMain, NULL, NULL, &exception);
@@ -370,6 +374,7 @@ static BOOL FindNearestObjectDistance(float *outDistance, BOOL includeInactive) 
 
     float minDist = FLT_MAX;
     BOOL found = NO;
+    float nearestX = 0.0f, nearestY = 0.0f, nearestZ = 0.0f;
     for (uintptr_t index = 0; index < result->maxLength; index++) {
         Il2CppObject *behaviour = result->objects[index];
         if (behaviour == NULL) continue;
@@ -387,14 +392,28 @@ static BOOL FindNearestObjectDistance(float *outDistance, BOOL includeInactive) 
         if (dist < minDist) {
             minDist = dist;
             found = YES;
+            nearestX = pos[0];
+            nearestY = pos[1];
+            nearestZ = pos[2];
         }
     }
-    if (found && outDistance) *outDistance = minDist;
-    return found;
+    if (!found) return NO;
+    if (outDistance) *outDistance = minDist;
+
+    struct { float x, y, z; } worldPos = { nearestX, nearestY, nearestZ };
+    void *projectionArgs[] = { &worldPos };
+    exception = NULL;
+    Il2CppObject *screenObj = gIl2CppRuntimeInvoke(worldToScreen, mainCam, projectionArgs, &exception);
+    if (exception != NULL || screenObj == NULL) return YES;
+    float *screen = (float *)gIl2CppObjectUnbox(screenObj);
+    if (outScreenX) *outScreenX = screen[0];
+    if (outScreenY) *outScreenY = screen[1];
+    if (outScreenZ) *outScreenZ = screen[2];
+    return YES;
 }
-/*camera.get_main主相机 component.get_transform transform.get_position 扫描monobehaviour算vector3距离 */
+/*camera.get_main主相机 component.get_transform transform.get_position 扫描monobehaviour算vector3距离 camera.worldtoscreenpoint投影3d到屏幕 */
 @interface RussOverlayController : NSObject
-@property(nonatomic, strong) UIView *panel;
+@property(nonatomic, strong) UIScrollView *panel;
 @property(nonatomic, strong) UIButton *floatingButton;
 @property(nonatomic, assign) CGFloat firstPersonFOV;
 @property(nonatomic, assign) CGFloat thirdPersonFOV;
@@ -409,6 +428,8 @@ static BOOL FindNearestObjectDistance(float *outDistance, BOOL includeInactive) 
 @property(nonatomic, strong) UILabel *routeHint;
 @property(nonatomic, strong) UILabel *cameraHint;
 @property(nonatomic, assign) BOOL includeInactive;
+@property(nonatomic, strong) UIView *espOverlay;
+@property(nonatomic, strong) UIView *espMarker;
 @end
 /* 悬浮ui控制器*/
 @implementation RussOverlayController
@@ -447,20 +468,29 @@ static BOOL FindNearestObjectDistance(float *outDistance, BOOL includeInactive) 
         ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV);
         ApplyTimeScale(self.speedMultiplier);
         if (self.espEnabled) {
-            self.espHint.text = @"（扫描中...）";
-            self.espTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(updateESP) userInfo:nil repeats:YES];
+            UISwitch *fakeSwitch = [[UISwitch alloc] init];
+            fakeSwitch.on = YES;
+            [self espChanged:fakeSwitch];
         }
     });
 }
 /* ui初始化入口*/
 - (void)buildPanelInWindow:(UIWindow *)window {
-    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 130.0, 280.0, 500.0)];
+    CGFloat screenHeight = UIScreen.mainScreen.bounds.size.height;
+    CGFloat panelHeight = MIN(500.0, screenHeight - 130.0 - 60.0);
+    if (panelHeight < 360.0) panelHeight = 360.0;
+    self.panel = [[UIScrollView alloc] initWithFrame:CGRectMake(84.0, 130.0, 280.0, panelHeight)];
     self.panel.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
     self.panel.layer.cornerRadius = 8.0;
+    self.panel.scrollEnabled = YES;
+    self.panel.contentSize = CGSizeMake(280.0, 500.0);
+    self.panel.showsVerticalScrollIndicator = YES;
     self.panel.hidden = YES;
 
     UIPanGestureRecognizer *panelDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleDrag:)];
-    [self.panel addGestureRecognizer:panelDrag];
+    UIView *dragHandle = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 280.0, 44.0)];
+    [dragHandle addGestureRecognizer:panelDrag];
+    [self.panel addSubview:dragHandle];
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 14.0, 210.0, 26.0)];
     title.text = @"视角调试";
@@ -617,19 +647,48 @@ static BOOL FindNearestObjectDistance(float *outDistance, BOOL includeInactive) 
     [self saveSettings];
     if (sender.isOn) {
         self.espHint.text = @"（扫描中...）";
+        if (self.espOverlay == nil) {
+            UIWindow *window = self.floatingButton.window;
+            if (window != nil) {
+                self.espOverlay = [[UIView alloc] initWithFrame:window.bounds];
+                self.espOverlay.backgroundColor = [UIColor clearColor];
+                self.espOverlay.userInteractionEnabled = NO;
+                self.espMarker = [[UIView alloc] initWithFrame:CGRectMake(-100.0, -100.0, 24.0, 24.0)];
+                self.espMarker.backgroundColor = [UIColor colorWithRed:1.0 green:0.18 blue:0.18 alpha:0.85];
+                self.espMarker.layer.cornerRadius = 4.0;
+                self.espMarker.layer.borderColor = [UIColor whiteColor].CGColor;
+                self.espMarker.layer.borderWidth = 1.5;
+                self.espMarker.hidden = YES;
+                [self.espOverlay addSubview:self.espMarker];
+                [window addSubview:self.espOverlay];
+            }
+        }
         self.espTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(updateESP) userInfo:nil repeats:YES];
     } else {
         [self.espTimer invalidate];
         self.espTimer = nil;
-        self.espHint.text = @"（关闭中）";
+        [self.espOverlay removeFromSuperview];
+        self.espOverlay = nil;
+        self.espMarker = nil;
+        self.espHint.text = @"（已关闭）";
     }
 }
 - (void)updateESP {
-    float distance = 0.0f;
-    if (FindNearestObjectDistance(&distance, self.includeInactive)) {
-        self.espHint.text = [NSString stringWithFormat:@"（最近对象: %.2f 米）", distance];
+    float distance = 0.0f, screenX = 0.0f, screenY = 0.0f, screenZ = -1.0f;
+    if (UpdateESPVisual(&distance, &screenX, &screenY, &screenZ, self.includeInactive)) {
+        self.espHint.text = [NSString stringWithFormat:@"（最近 %.1f 米）", distance];
+        if (self.espMarker != nil) {
+            if (screenZ > 0.0f) {
+                CGFloat screenH = self.espOverlay.superview.bounds.size.height;
+                self.espMarker.frame = CGRectMake((CGFloat)screenX - 12.0, screenH - (CGFloat)screenY - 12.0, 24.0, 24.0);
+                self.espMarker.hidden = NO;
+            } else {
+                self.espMarker.hidden = YES;
+            }
+        }
     } else {
         self.espHint.text = @"（未找到对象）";
+        if (self.espMarker != nil) self.espMarker.hidden = YES;
     }
 }
 - (void)inactiveChanged:(UISwitch *)sender {
