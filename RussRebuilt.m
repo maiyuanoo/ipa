@@ -605,6 +605,9 @@ static BOOL ApplyFogRemoval(BOOL remove) {
 static void *gLightKlass;
 static const MethodInfo *gGetIntensityMethod;
 static const MethodInfo *gSetIntensityMethod;
+static uintptr_t gHighlightStateAddress;
+static float gOriginalHighlightState[7];
+static BOOL gNativeHighlightStateSaved;
 enum { kRussLightCacheMax = 1024 };
 typedef struct RussLightCacheEntry {
     uint32_t handle;
@@ -641,7 +644,44 @@ static NSUInteger RestoreHighlight(void) {
     return restored;
 }
 
+static BOOL ApplyRussNativeHighlight(BOOL enabled, float brightness) {
+    static const uintptr_t kHighlightChain[] = {
+        0x65f82e8, 0x560, 0x50, 0xb8, 0x20, 0xb0, 0xb0
+    };
+    uintptr_t address = 0;
+    if (!ResolveUnityPointerChain(kHighlightChain, sizeof(kHighlightChain) / sizeof(kHighlightChain[0]), &address)) return NO;
+
+    float state[7] = { 0 };
+    if (!ReadProcessMemory(address, state, sizeof(state))) return NO;
+    for (NSUInteger index = 0; index < 7; index++) {
+        if (!isfinite(state[index])) return NO;
+    }
+    if (!gNativeHighlightStateSaved || gHighlightStateAddress != address) {
+        memcpy(gOriginalHighlightState, state, sizeof(state));
+        gHighlightStateAddress = address;
+        gNativeHighlightStateSaved = YES;
+    }
+
+    if (!enabled) {
+        static const size_t kOffsets[] = { 0x0, 0x8, 0x10, 0x18 };
+        for (NSUInteger index = 0; index < 4; index++) {
+            size_t offset = kOffsets[index];
+            if (!WriteProcessMemory(address + offset, &gOriginalHighlightState[offset / sizeof(float)], sizeof(float))) return NO;
+        }
+        return YES;
+    }
+
+    float marker = 9999.0f;/*原版 FUN_00019624 的 0x461c3c00 标记值*/
+    float intensity = (float)MAX(1.0, MIN(10.0, brightness));
+    return WriteProcessMemory(address, &marker, sizeof(marker)) &&
+           WriteProcessMemory(address + 0x8, &intensity, sizeof(intensity)) &&
+           WriteProcessMemory(address + 0x10, &marker, sizeof(marker)) &&
+           WriteProcessMemory(address + 0x18, &intensity, sizeof(intensity));
+}
+/*Russ FUN_00019624：定位 0x1c 字节状态块，写入 marker/亮度交错字段，关闭时恢复原始四字段。*/
+
 static NSUInteger ApplyHighlight(BOOL on, float brightness) {
+    if (ResolveIl2CppSymbols() && ApplyRussNativeHighlight(on, brightness)) return 2;
     if (!EnsureIl2CppThread()) return 0;
     if (gLightKlass == NULL) {
         gLightKlass = FindClassInAllAssemblies("UnityEngine", "Light");
