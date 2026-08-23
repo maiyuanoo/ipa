@@ -29,6 +29,7 @@ typedef void *(*Il2CppClassFromName)(const Il2CppImage *image, const char *names
 typedef const MethodInfo *(*Il2CppClassGetMethodFromName)(void *klass, const char *name, int argumentsCount);
 typedef void *(*Il2CppClassGetFieldFromName)(void *klass, const char *name);
 typedef size_t (*Il2CppFieldGetOffset)(void *field);
+typedef void (*Il2CppFieldGetValue)(void *object, void *field, void *value);
 typedef void (*Il2CppFieldSetValue)(void *object, void *field, void *value);
 typedef Il2CppObject *(*Il2CppRuntimeInvoke)(const MethodInfo *method, void *object, void **parameters, Il2CppObject **exception);
 typedef void *(*Il2CppThreadAttach)(Il2CppDomain *domain);
@@ -50,6 +51,7 @@ static Il2CppClassFromName gIl2CppClassFromName;
 static Il2CppClassGetMethodFromName gIl2CppClassGetMethodFromName;
 static Il2CppClassGetFieldFromName gIl2CppClassGetFieldFromName;
 static Il2CppFieldGetOffset gIl2CppFieldGetOffset;
+static Il2CppFieldGetValue gIl2CppFieldGetValue;
 static Il2CppFieldSetValue gIl2CppFieldSetValue;
 static Il2CppRuntimeInvoke gIl2CppRuntimeInvoke;
 static Il2CppThreadAttach gIl2CppThreadAttach;
@@ -101,6 +103,7 @@ static BOOL ResolveIl2CppSymbols(void) {
     gIl2CppClassGetMethodFromName = (Il2CppClassGetMethodFromName)dlsym(base, "il2cpp_class_get_method_from_name");
     gIl2CppClassGetFieldFromName = (Il2CppClassGetFieldFromName)dlsym(base, "il2cpp_class_get_field_from_name");
     gIl2CppFieldGetOffset = (Il2CppFieldGetOffset)dlsym(base, "il2cpp_field_get_offset");
+    gIl2CppFieldGetValue = (Il2CppFieldGetValue)dlsym(base, "il2cpp_field_get_value");
     gIl2CppFieldSetValue = (Il2CppFieldSetValue)dlsym(base, "il2cpp_field_set_value");
     gIl2CppRuntimeInvoke = (Il2CppRuntimeInvoke)dlsym(base, "il2cpp_runtime_invoke");
     gIl2CppThreadAttach = (Il2CppThreadAttach)dlsym(base, "il2cpp_thread_attach");
@@ -590,38 +593,50 @@ static NSUInteger ApplyDemagnetization(float strengthPercent) {
 }
 /*rigidbody.set_drag/set_angulardrag 消磁强度按百分比线性映射 关时恢复unity默认值*/
 
-static void *gLineRendererKlass;
+static void *gFindPathLineCtrlKlass;
 static void *gRendererKlass;
 static const MethodInfo *gSetEnabledMethod;
-/*linerenderer/renderer缓存*/
+static void *gRouteLineRendererField;
+static void *gRoutePointsListField;
+/*路线控制器/字段/renderer缓存，字段名来自 Russ 原版调用链*/
 
-static NSUInteger SetAllLineRenderersVisible(BOOL visible, BOOL includeInactive) {
+static NSUInteger SetIslandRouteVisible(BOOL visible) {
     if (!EnsureIl2CppThread()) return 0;
-    if (gLineRendererKlass == NULL || gRendererKlass == NULL) {
-        gLineRendererKlass = FindClassInAllAssemblies("UnityEngine", "LineRenderer");
+    if (gFindPathLineCtrlKlass == NULL || gRendererKlass == NULL) {
+        gFindPathLineCtrlKlass = FindClassInAllAssemblies("", "FindPathLineCtrl");
         gRendererKlass = FindClassInAllAssemblies("UnityEngine", "Renderer");
-        if (gLineRendererKlass == NULL || gRendererKlass == NULL) return 0;
+        if (gFindPathLineCtrlKlass == NULL || gRendererKlass == NULL) return 0;
+    }
+    if (gRouteLineRendererField == NULL) {
+        gRouteLineRendererField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "lineRender");
+        gRoutePointsListField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "pointsList");
+        if (gRouteLineRendererField == NULL || gRoutePointsListField == NULL || gIl2CppFieldGetValue == NULL) return 0;
     }
     if (gSetEnabledMethod == NULL) {
         gSetEnabledMethod = gIl2CppClassGetMethodFromName(gRendererKlass, "set_enabled", 1);
         if (gSetEnabledMethod == NULL) return 0;
     }
-    Il2CppArray *result = ScanObjectsOfClass(gLineRendererKlass, includeInactive);
+    Il2CppArray *result = ScanObjectsOfClass(gFindPathLineCtrlKlass, YES);
     if (result == NULL) return 0;
     BOOL value = visible ? YES : NO;
     void *enableArgs[] = { &value };
     NSUInteger touched = 0;
     Il2CppObject *exception = NULL;
     for (uintptr_t index = 0; index < result->maxLength; index++) {
-        Il2CppObject *lineRenderer = result->objects[index];
-        if (lineRenderer == NULL) continue;
+        Il2CppObject *routeController = result->objects[index];
+        if (routeController == NULL) continue;
+        Il2CppObject *lineRenderer = NULL;
+        Il2CppObject *pointsList = NULL;
+        gIl2CppFieldGetValue(routeController, gRouteLineRendererField, &lineRenderer);
+        gIl2CppFieldGetValue(routeController, gRoutePointsListField, &pointsList);
+        if (lineRenderer == NULL || pointsList == NULL) continue;
         exception = NULL;
         gIl2CppRuntimeInvoke(gSetEnabledMethod, lineRenderer, enableArgs, &exception);
         if (exception == NULL) touched++;
     }
     return touched;
 }
-/*扫描全部linerenderer(含隐藏) renderer.set_enabled切显隐 岛屿路线显示*/
+/*仅操作 FindPathLineCtrl.lineRender；pointsList 为空说明路线尚未生成，不触碰其他 LineRenderer*/
 
 static void *gTransformKlass;
 static const MethodInfo *gGetTransformMethod;
@@ -1133,7 +1148,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
         ApplyCameraFollow((float)thirdFOV, (float)[self sliderValueForKey:@"firstPersonFOV"]);
         [self setCardHint:key text:enabled ? @"已调整角色相机视角" : @"已恢复角色相机视角"];
     } else if ([key isEqualToString:@"islandRoute"]) {
-        NSUInteger count = SetAllLineRenderersVisible(enabled, YES);
+        NSUInteger count = SetIslandRouteVisible(enabled);
         [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"已显示 %lu 条路线", (unsigned long)count] : @"已隐藏所有路线"]];
     } else if ([key isEqualToString:@"demagnetization"]) {
         NSUInteger count = enabled ? ApplyDemagnetization([self sliderValueForKey:@"demagnetization"]) : ApplyDemagnetization(0.0);
@@ -1237,7 +1252,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
         if ([self.featureStates[@"highlight"] boolValue]) ApplyHighlight(YES, 2.5f);
         if ([self.featureStates[@"demagnetization"] boolValue]) ApplyDemagnetization([self sliderValueForKey:@"demagnetization"]);
         if ([self.featureStates[@"coffin"] boolValue]) ApplyCoffinReveal(YES);
-        if ([self.featureStates[@"islandRoute"] boolValue]) SetAllLineRenderersVisible(YES, YES);
+        if ([self.featureStates[@"islandRoute"] boolValue]) SetIslandRouteVisible(YES);
     }
 }
 /*每帧: 引擎连接重试+状态刷新(常驻) fog/timescale/camerafollow字段/相机fov轻量invoke 每30帧(0.5s):灯/刚体/棺材/路线扫描 热更程序集加载后自动生效 新对象自动覆盖 */
