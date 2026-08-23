@@ -5,14 +5,14 @@ INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1
 INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
 INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1039 ms) (ClassSearcher)  
+INFO  Class search complete (873 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
 INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
 INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
-INFO  Headless startup complete (5969 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (4997 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
 WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
@@ -102,42 +102,42 @@ WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.
 WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::length_error::vtable (DemangledAddressTable)  
 INFO  -----------------------------------------------------
     AARCH64 ELF PLT Thunks                     0.000 secs
-    ASCII Strings                              0.423 secs
-    Apply Data Archives                        0.619 secs
-    Basic Constant Reference Analyzer          3.160 secs
-    CFStrings                                  0.032 secs
-    Call Convention ID                         3.491 secs
-    Call-Fixup Installer                       0.027 secs
-    Create Address Tables                      0.068 secs
-    Create Address Tables - One Time           0.085 secs
-    Create Function                            0.234 secs
-    Data Reference                             0.298 secs
-    Decompiler Switch Analysis                10.541 secs
-    Decompiler Switch Analysis - One Time      3.766 secs
-    Demangler GNU                              0.253 secs
-    Demangler Swift                           15.199 secs
-    Disassemble                                0.490 secs
+    ASCII Strings                              0.415 secs
+    Apply Data Archives                        0.300 secs
+    Basic Constant Reference Analyzer          2.871 secs
+    CFStrings                                  0.030 secs
+    Call Convention ID                         3.162 secs
+    Call-Fixup Installer                       0.024 secs
+    Create Address Tables                      0.067 secs
+    Create Address Tables - One Time           0.066 secs
+    Create Function                            0.191 secs
+    Data Reference                             0.317 secs
+    Decompiler Switch Analysis                10.060 secs
+    Decompiler Switch Analysis - One Time      3.432 secs
+    Demangler GNU                              0.234 secs
+    Demangler Swift                           12.844 secs
+    Disassemble                                0.462 secs
     Disassemble Entry Points                   0.085 secs
-    Embedded Media                             1.470 secs
+    Embedded Media                             0.330 secs
     External Entry References                  0.000 secs
-    Function ID                                0.019 secs
-    Function Start Search                      0.101 secs
-    Function Start Search After Code           0.036 secs
-    Function Start Search After Data           0.043 secs
+    Function ID                                0.020 secs
+    Function Start Search                      0.067 secs
+    Function Start Search After Code           0.034 secs
+    Function Start Search After Data           0.047 secs
     Function Start Search delayed - One Time   0.026 secs
-    Mach-O Function Starts                     0.139 secs
-    Non-Returning Functions - Discovered       0.207 secs
-    Non-Returning Functions - Known            0.006 secs
-    Objective-C Message Analyzer              13.732 secs
-    Objective-C Type Metadata Analyzer         1.702 secs
-    Reference                                  0.228 secs
-    Shared Return Calls                        0.225 secs
-    Stack                                      3.274 secs
-    Subroutine References                      0.236 secs
-    Subroutine References - One Time           0.002 secs
-    Swift Type Metadata Analyzer               0.075 secs
+    Mach-O Function Starts                     0.141 secs
+    Non-Returning Functions - Discovered       0.159 secs
+    Non-Returning Functions - Known            0.010 secs
+    Objective-C Message Analyzer              13.295 secs
+    Objective-C Type Metadata Analyzer         1.714 secs
+    Reference                                  0.242 secs
+    Shared Return Calls                        0.174 secs
+    Stack                                      2.732 secs
+    Subroutine References                      0.223 secs
+    Subroutine References - One Time           0.005 secs
+    Swift Type Metadata Analyzer               0.071 secs
 -----------------------------------------------------
-     Total Time   60 secs
+     Total Time   53 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
