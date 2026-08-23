@@ -1,13 +1,16 @@
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
+import ghidra.program.model.mem.Memory;
 
 public class RecoverNative extends GhidraScript {
     private boolean isTargetFunction(String functionName) {
@@ -43,6 +46,20 @@ public class RecoverNative extends GhidraScript {
             entryOffset == 0x1be30L;
     }
 
+    private Set<Long> getBlockInvokeOffsets() throws Exception {
+        long[] blockOffsets = { 0xe11f0L, 0xe1210L, 0xe1230L, 0xe1290L, 0xe12d0L };
+        Memory memory = currentProgram.getMemory();
+        Set<Long> invokeOffsets = new HashSet<Long>();
+
+        for (long blockOffset : blockOffsets) {
+            long invokeAddress = memory.getLong(toAddr(blockOffset + 0x10L));
+            if (invokeAddress != 0) {
+                invokeOffsets.add(invokeAddress & 0xffffffffL);
+            }
+        }
+        return invokeOffsets;
+    }
+
     @Override
     public void run() throws Exception {
         String[] arguments = getScriptArgs();
@@ -65,11 +82,13 @@ public class RecoverNative extends GhidraScript {
         int recoveredCount = 0;
         List<Function> allFunctions = new ArrayList<Function>();
         List<Function> targetFunctions = new ArrayList<Function>();
+        Set<Long> blockInvokeOffsets = getBlockInvokeOffsets();
         FunctionIterator functions = currentProgram.getFunctionManager().getFunctions(true);
         while (functions.hasNext() && !monitor.isCancelled()) {
             Function function = functions.next();
             allFunctions.add(function);
-            if (isTargetFunction(function.getName()) || isRuntimeDispatcher(function)) {
+            if (isTargetFunction(function.getName()) || isRuntimeDispatcher(function) ||
+                blockInvokeOffsets.contains(function.getEntryPoint().getOffset())) {
                 targetFunctions.add(function);
             }
         }
