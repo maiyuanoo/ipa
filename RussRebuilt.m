@@ -767,7 +767,6 @@ static const MethodInfo *gGraphicGetColorMethod;
 static const MethodInfo *gGraphicSetColorMethod;
 static void *gCoffinEntryListField;
 static uint32_t gCoffinPage = 1;
-static BOOL gCoffinRevealEnabled;
 static float gDemagnetizationFactor;
 static RussCoffinColorCacheEntry gCoffinColorCache[kRussCoffinColorCacheMax];
 /*Russ 0x17720：EAKGFFFBKDG.DCODHFKCBGO → GAKFOICFFGF.DGFGHBCDENH →
@@ -899,23 +898,67 @@ static NSUInteger ApplyCoffinVisualState(void) {
 
     Il2CppObject *listObject = NULL;
     gIl2CppFieldGetValue(entry, gCoffinEntryListField, &listObject);
-    float hidingFactor = gCoffinRevealEnabled ? 1.0f : gDemagnetizationFactor;
-    return ApplyCoffinEntryList(listObject, 1.0f - hidingFactor);
+    return ApplyCoffinEntryList(listObject, 1.0f - gDemagnetizationFactor);
 }
 /*Russ 0x17720：目标 Image 的 alpha = 原 alpha × (1 - 强度)，每次仅处理一个分页。*/
 
+static uintptr_t gCoffinRevealStateAddress;
+static float gOriginalCoffinRevealState[6];
+static BOOL gNativeCoffinRevealStateSaved;
+
 static NSUInteger ApplyCoffinReveal(BOOL reveal) {
-    gCoffinRevealEnabled = reveal;
-    if (!gCoffinRevealEnabled && gDemagnetizationFactor <= 0.0f) return RestoreCoffinGraphicColors();
-    return ApplyCoffinVisualState();
+    static const uintptr_t kCoffinRevealChain[] = {
+        0x66138f8, 0x1a0, 0xb8, 0x160, 0xcc
+    };
+    uintptr_t result = 0;
+    if (!ResolveIl2CppSymbols() ||
+        !ResolveUnityPointerChain(kCoffinRevealChain, sizeof(kCoffinRevealChain) / sizeof(kCoffinRevealChain[0]), &result) ||
+        result < 0x10008) return 0;
+
+    uintptr_t stateAddress = result - 0x8;
+    float current[6] = { 0 };
+    if (!ReadProcessMemory(stateAddress, current, sizeof(current))) return 0;
+    for (NSUInteger index = 0; index < 6; index++) {
+        if (!isfinite(current[index])) return 0;
+    }
+    if (!gNativeCoffinRevealStateSaved || gCoffinRevealStateAddress != stateAddress) {
+        memcpy(gOriginalCoffinRevealState, current, sizeof(current));
+        gCoffinRevealStateAddress = stateAddress;
+        gNativeCoffinRevealStateSaved = YES;
+    }
+
+    static const float kCoffinRevealEnabledState[6] = {
+        9999.0f, 9999.0f, 9999.0f, 9999.0f, 9999.0f, 9999.0f
+    };
+    if (!reveal) {
+        BOOL allMarked = YES;
+        for (NSUInteger index = 0; index < 6; index++) {
+            if (current[index] != kCoffinRevealEnabledState[index]) {
+                allMarked = NO;
+                break;
+            }
+        }
+        if (allMarked) {
+            return WriteProcessMemory(stateAddress, gOriginalCoffinRevealState, sizeof(gOriginalCoffinRevealState)) ? 1 : 0;
+        }
+        NSUInteger restored = 0;
+        for (NSUInteger index = 0; index < 6; index++) {
+            if (current[index] == kCoffinRevealEnabledState[index] &&
+                WriteProcessMemory(stateAddress + index * sizeof(float), &gOriginalCoffinRevealState[index], sizeof(float))) {
+                restored++;
+            }
+        }
+        return restored;
+    }
+    return WriteProcessMemory(stateAddress, kCoffinRevealEnabledState, sizeof(kCoffinRevealEnabledState)) ? 1 : 0;
 }
 
 static NSUInteger ApplyDemagnetization(float strengthPercent) {
     gDemagnetizationFactor = (float)MAX(0.0, MIN(100.0, strengthPercent)) / 100.0f;
-    if (!gCoffinRevealEnabled && gDemagnetizationFactor <= 0.0f) return RestoreCoffinGraphicColors();
+    if (gDemagnetizationFactor <= 0.0f) return RestoreCoffinGraphicColors();
     return ApplyCoffinVisualState();
 }
-/*消磁沿用原版 EAK→GAK→JJK Image 链：强度 0~100% 直接控制原 alpha 的衰减。*/
+/*显棺按 Russ FUN_00019894 的独立内存链写 24 字节状态；消磁才使用 EAK→GAK→JJK Image 透明度链。*/
 
 static void *gFindPathLineCtrlKlass;
 static void *gLineRendererKlass;
