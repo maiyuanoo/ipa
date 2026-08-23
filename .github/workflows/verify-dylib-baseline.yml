@@ -1,0 +1,41 @@
+name: verify-dylib-baseline
+
+on:
+  push:
+    paths:
+      - .github/workflows/verify-dylib-baseline.yml
+
+jobs:
+  compare:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare source and arm64 dylib with the verified baseline
+        run: |
+          BASELINE_COMMIT=d4419a7c8182baedee6610e5e712c0cfbdabf5c9
+          git diff --exit-code "$BASELINE_COMMIT" -- RussRebuilt.m
+          git show "$BASELINE_COMMIT:RussRebuilt.m" > "$RUNNER_TEMP/RussRebuilt-baseline.m"
+
+          SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)"
+          COMMON_FLAGS=(
+            --target=arm64-apple-ios15.0
+            -isysroot "$SDKROOT"
+            -miphoneos-version-min=15.0
+            -fPIC
+            -dynamiclib
+            -fvisibility=hidden
+            -fobjc-arc
+            -framework Foundation
+            -framework UIKit
+            -framework QuartzCore
+            -Wl,-install_name,@rpath/RussRebuilt.dylib
+          )
+
+          clang "${COMMON_FLAGS[@]}" RussRebuilt.m -o "$RUNNER_TEMP/current.dylib"
+          clang "${COMMON_FLAGS[@]}" "$RUNNER_TEMP/RussRebuilt-baseline.m" -o "$RUNNER_TEMP/baseline.dylib"
+          cmp --silent "$RUNNER_TEMP/current.dylib" "$RUNNER_TEMP/baseline.dylib"
+          shasum -a 256 "$RUNNER_TEMP/current.dylib" "$RUNNER_TEMP/baseline.dylib"
+          file "$RUNNER_TEMP/current.dylib" "$RUNNER_TEMP/baseline.dylib"
+          xcrun lipo -info "$RUNNER_TEMP/current.dylib"
