@@ -18,6 +18,11 @@ public class RecoverNative extends GhidraScript {
             functionName.equals("RussIslandRouteOverlayShutdown");
     }
 
+    private boolean isRuntimeDispatcher(Function function) {
+        long entryOffset = function.getEntryPoint().getOffset();
+        return entryOffset == 0x17184L || entryOffset == 0x19cf0L;
+    }
+
     @Override
     public void run() throws Exception {
         String[] arguments = getScriptArgs();
@@ -44,7 +49,7 @@ public class RecoverNative extends GhidraScript {
         while (functions.hasNext() && !monitor.isCancelled()) {
             Function function = functions.next();
             allFunctions.add(function);
-            if (isTargetFunction(function.getName())) {
+            if (isTargetFunction(function.getName()) || isRuntimeDispatcher(function)) {
                 targetFunctions.add(function);
             }
         }
