@@ -1,0 +1,150 @@
+openjdk version "25.0.4" 2026-07-21 LTS
+OpenJDK Runtime Environment Temurin-25.0.4+7 (build 25.0.4+7-LTS)
+OpenJDK 64-Bit Server VM Temurin-25.0.4+7 (build 25.0.4+7-LTS, mixed mode)
+INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (1047 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
+INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
+INFO  Headless startup complete (6291 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
+WARNING: Please consider reporting this to the maintainers of class org.apache.felix.framework.util.SecureAction
+WARNING: sun.misc.Unsafe::staticFieldOffset will be removed in a future release
+INFO  HEADLESS Script Paths:
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /home/runner/work/ipa/ipa/tools/ghidra
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: /home/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
+INFO  Creating project: /home/runner/work/_temp/ghidra-project/RussRecovery (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: /home/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+WARN  Using unknown opinion: Mac OS X Mach-O, AARCH64:LE:64:v8A:default (LcsHintLoadSpecChooser)  
+INFO  Using Loader: Mac OS X Mach-O (ProgramLoader)  
+INFO  Using Language/Compiler: AARCH64:LE:64:v8A:default (ProgramLoader)  
+INFO  Using Library Search Path: [., /bin, /lib, /lib64, /lib/x86_64-linux-gnu, /lib/aarch64-linux-gnu, /usr/bin, /usr/lib, /usr/X11R6/bin, /usr/X11R6/lib, /usr/java/packages/lib, /usr/lib64] (ProgramLoader)  
+INFO  Additional info:
+Loading file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib?MD5=1a88942cf168b0e5a4a65d1f36306ab7...
+Discovered 2119 DYLD_CHAINED_PTR_64 chained pointers.
+Fixed up 2119 chained pointers.
+RussOriginal.dylib: installed 8 objc SpecExtensions
+------------------------------------------------
+
+Linking the External Programs of 'RussOriginal.dylib' to imported libraries...
+  [/System/Library/Frameworks/CryptoKit.framework/CryptoKit] -> not found in project
+  [/System/Library/Frameworks/Security.framework/Security] -> not found in project
+  [/System/Library/Frameworks/QuartzCore.framework/QuartzCore] -> not found in project
+  [/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics] -> not found in project
+  [/System/Library/Frameworks/Foundation.framework/Foundation] -> not found in project
+  [/System/Library/Frameworks/UIKit.framework/UIKit] -> not found in project
+  [/usr/lib/libobjc.A.dylib] -> not found in project
+  [/usr/lib/libc++.1.dylib] -> not found in project
+  [/usr/lib/libSystem.B.dylib] -> not found in project
+  [/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation] -> not found in project
+  [/usr/lib/swift/libswiftCore.dylib] -> not found in project
+  [/usr/lib/swift/libswiftCoreFoundation.dylib] -> not found in project
+  [/usr/lib/swift/libswiftCoreImage.dylib] -> not found in project
+  [/usr/lib/swift/libswiftDarwin.dylib] -> not found in project
+  [/usr/lib/swift/libswiftDispatch.dylib] -> not found in project
+  [/usr/lib/swift/libswiftMetal.dylib] -> not found in project
+  [/usr/lib/swift/libswiftOSLog.dylib] -> not found in project
+  [/usr/lib/swift/libswiftObjectiveC.dylib] -> not found in project
+  [/usr/lib/swift/libswiftQuartzCore.dylib] -> not found in project
+  [/usr/lib/swift/libswiftSpatial.dylib] -> not found in project
+  [/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib] -> not found in project
+  [/usr/lib/swift/libswiftXPC.dylib] -> not found in project
+  [/usr/lib/swift/libswiftos.dylib] -> not found in project
+  [/usr/lib/swift/libswiftsimd.dylib] -> not found in project
+  [/usr/lib/swift/libswiftFoundation.dylib] -> not found in project
+  [/usr/lib/swift/libswiftUIKit.dylib] -> not found in project
+------------------------------------------------
+
+ (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  hit non-returning function, restarting decompiler switch analyzer later (DecompilerSwitchAnalyzer)  
+INFO  Packed database cache: /var/tmp/runner-ghidra/packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: mac_osx (ApplyDataArchiveAnalyzer)  
+WARN  Unable to fully apply external demangled Address Table at 00102d00: std::length_error::typeinfo (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00102e00: std::bad_array_new_length::typeinfo (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00102f00: std::length_error::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: <EXTERNAL>::std::length_error::typeinfo (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::bad_array_new_length::typeinfo (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::length_error::vtable (DemangledAddressTable)  
+INFO  -----------------------------------------------------
+    AARCH64 ELF PLT Thunks                     0.000 secs
+    ASCII Strings                              0.456 secs
+    Apply Data Archives                        0.352 secs
+    Basic Constant Reference Analyzer          3.051 secs
+    CFStrings                                  0.034 secs
+    Call Convention ID                         3.408 secs
+    Call-Fixup Installer                       0.029 secs
+    Create Address Tables                      0.067 secs
+    Create Address Tables - One Time           0.050 secs
+    Create Function                            0.227 secs
+    Data Reference                             0.274 secs
+    Decompiler Switch Analysis                10.582 secs
+    Decompiler Switch Analysis - One Time      3.635 secs
+    Demangler GNU                              0.260 secs
+    Demangler Swift                           15.464 secs
+    Disassemble                                0.541 secs
+    Disassemble Entry Points                   0.091 secs
+    Embedded Media                             0.502 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.020 secs
+    Function Start Search                      0.080 secs
+    Function Start Search After Code           0.043 secs
+    Function Start Search After Data           0.045 secs
+    Function Start Search delayed - One Time   0.033 secs
+    Mach-O Function Starts                     0.130 secs
+    Non-Returning Functions - Discovered       0.273 secs
+    Non-Returning Functions - Known            0.007 secs
+    Objective-C Message Analyzer              14.116 secs
+    Objective-C Type Metadata Analyzer         1.914 secs
+    Reference                                  0.239 secs
+    Shared Return Calls                        0.203 secs
+    Stack                                      3.095 secs
+    Subroutine References                      0.235 secs
+    Subroutine References - One Time           0.003 secs
+    Swift Type Metadata Analyzer               0.078 secs
+-----------------------------------------------------
+     Total Time   59 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/RussNativeRecovered.c'  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java (HeadlessAnalyzer)  
+INFO  ANALYZING changes made by post scripts: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  /RussOriginal.dylib: file created (runner) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /RussOriginal.dylib (RussRecovery:/RussOriginal.dylib) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  

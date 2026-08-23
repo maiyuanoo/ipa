@@ -1,0 +1,151 @@
+openjdk version "25.0.4" 2026-07-21 LTS
+OpenJDK Runtime Environment Temurin-25.0.4+7 (build 25.0.4+7-LTS)
+OpenJDK 64-Bit Server VM Temurin-25.0.4+7 (build 25.0.4+7-LTS, mixed mode)
+INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (1044 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (3670 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
+WARNING: Please consider reporting this to the maintainers of class org.apache.felix.framework.util.SecureAction
+WARNING: sun.misc.Unsafe::staticFieldOffset will be removed in a future release
+INFO  HEADLESS Script Paths:
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /home/runner/work/ipa/ipa/tools/ghidra
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: /home/runner/work/_temp/ghidra-project/CiyueRecovery (HeadlessAnalyzer)  
+INFO  Creating project: /home/runner/work/_temp/ghidra-project/CiyueRecovery (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: /home/runner/work/_temp/ghidra-project/CiyueRecovery (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+WARN  Using unknown opinion: Mac OS X Mach-O, AARCH64:LE:64:v8A:default (LcsHintLoadSpecChooser)  
+INFO  Using Loader: Mac OS X Mach-O (ProgramLoader)  
+INFO  Using Language/Compiler: AARCH64:LE:64:v8A:default (ProgramLoader)  
+INFO  Using Library Search Path: [., /bin, /lib, /lib64, /lib/x86_64-linux-gnu, /lib/aarch64-linux-gnu, /usr/bin, /usr/lib, /usr/X11R6/bin, /usr/X11R6/lib, /usr/java/packages/lib, /usr/lib64] (ProgramLoader)  
+INFO  Additional info:
+Loading file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib?MD5=3b300a5dc13764e4680ce3ccd2bb3e95...
+Ciyue0818.dylib: installed 8 objc SpecExtensions
+------------------------------------------------
+
+Linking the External Programs of 'Ciyue0818.dylib' to imported libraries...
+  [/usr/lib/libobjc.A.dylib] -> not found in project
+  [/System/Library/Frameworks/Foundation.framework/Foundation] -> not found in project
+  [/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation] -> not found in project
+  [/System/Library/Frameworks/UIKit.framework/UIKit] -> not found in project
+  [/System/Library/Frameworks/Security.framework/Security] -> not found in project
+  [/System/Library/Frameworks/QuartzCore.framework/QuartzCore] -> not found in project
+  [/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics] -> not found in project
+  [/System/Library/Frameworks/AVFoundation.framework/AVFoundation] -> not found in project
+  [/System/Library/Frameworks/Accelerate.framework/Accelerate] -> not found in project
+  [/System/Library/Frameworks/GLKit.framework/GLKit] -> not found in project
+  [/System/Library/Frameworks/SystemConfiguration.framework/SystemConfiguration] -> not found in project
+  [/System/Library/Frameworks/GameController.framework/GameController] -> not found in project
+  [/System/Library/Frameworks/Metal.framework/Metal] -> not found in project
+  [/System/Library/Frameworks/MetalKit.framework/MetalKit] -> not found in project
+  [/usr/lib/libc++.1.dylib] -> not found in project
+  [/usr/lib/libSystem.B.dylib] -> not found in project
+  [/usr/lib/libz.1.dylib] -> not found in project
+------------------------------------------------
+
+ (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  hit non-returning function, restarting decompiler switch analyzer later (DecompilerSwitchAnalyzer)  
+ERROR VarnodeContext: out of address spaces at @000836dc for: x0-000836dc (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00207610 for: x11-00207610 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0014e0c4 for: x18-0014e0c4 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @000dd128 for: x9-000dd128 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00053b88 for: x15-00053b88 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0009b390 for: d25-0009b390 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00180550 for: x17-00180550 (VarnodeContext)  
+INFO  Packed database cache: /var/tmp/runner-ghidra/packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: mac_osx (ApplyDataArchiveAnalyzer)  
+WARN  Unable to fully apply external demangled Address Table at 00517800: __cxxabiv1::__class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00517900: __cxxabiv1::__si_class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00517a00: std::length_error::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00517b00: std::out_of_range::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::__cxxabiv1::__class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::__cxxabiv1::__si_class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::length_error::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::out_of_range::vtable (DemangledAddressTable)  
+ERROR VarnodeContext: out of address spaces at @00083bb8 for: d18-00083bb8 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00207604 for: d30-00207604 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0014e0c4 for: x16-0014e0c4 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @000dd114 for: d22-000dd114 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00053b78 for: d30-00053b78 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0009b390 for: d19-0009b390 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00180544 for: d26-00180544 (VarnodeContext)  
+INFO  -----------------------------------------------------
+    AARCH64 ELF PLT Thunks                     0.000 secs
+    ASCII Strings                              0.620 secs
+    Apply Data Archives                        0.331 secs
+    Basic Constant Reference Analyzer         31.150 secs
+    CFStrings                                  0.063 secs
+    Call Convention ID                         3.284 secs
+    Call-Fixup Installer                       0.128 secs
+    Create Address Tables                      0.768 secs
+    Create Address Tables - One Time           0.043 secs
+    Create Function                            2.162 secs
+    Data Reference                             0.712 secs
+    Decompiler Switch Analysis                10.937 secs
+    Decompiler Switch Analysis - One Time     41.451 secs
+    Demangler GNU                              0.358 secs
+    Disassemble                                0.547 secs
+    Disassemble Entry Points                   0.043 secs
+    Embedded Media                             0.064 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.028 secs
+    Function Start Search                      0.274 secs
+    Function Start Search After Code           0.185 secs
+    Function Start Search After Data           0.331 secs
+    Function Start Search delayed - One Time   0.101 secs
+    Mach-O Function Starts                     0.016 secs
+    Non-Returning Functions - Discovered       1.266 secs
+    Non-Returning Functions - Known            0.006 secs
+    Objective-C Message Analyzer             170.971 secs
+    Objective-C Type Metadata Analyzer        10.667 secs
+    Reference                                  0.886 secs
+    Shared Return Calls                        1.009 secs
+    Stack                                     37.559 secs
+    Subroutine References                      0.587 secs
+    Subroutine References - One Time           0.002 secs
+-----------------------------------------------------
+     Total Time   316 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/CiyueNativeRecovered.c'  (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java (HeadlessAnalyzer)  
+INFO  ANALYZING changes made by post scripts: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  /Ciyue0818.dylib: file created (runner) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /Ciyue0818.dylib (CiyueRecovery:/Ciyue0818.dylib) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
