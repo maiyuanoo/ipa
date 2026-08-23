@@ -422,7 +422,8 @@ static void ApplyTimeScale(float multiplier) {
     if (gSetTimeScaleMethod == NULL) gSetTimeScaleMethod = gIl2CppClassGetMethodFromName(gTimeKlass, "set_timeScale", 1);
     if (gSetTimeScaleMethod == NULL) return;
 
-    float value = (float)MAX(0.0, MIN(5.0, multiplier));
+    /* Russ _YYGameMemorySetGlobalSpeed 将有效倍率收敛到 [1, 10]。 */
+    float value = (float)MAX(1.0, MIN(10.0, multiplier));
     Il2CppObject *exception = NULL;
     if (value == 1.0f) {
         if (gTimeScaleSaved) {
@@ -567,9 +568,43 @@ static BOOL ApplyFogRemoval(BOOL remove) {
 /*优先使用 Russ 原版内存状态链；仅在链不匹配当前 UnityFramework 时回退 RenderSettings*/
 
 static void *gLightKlass;
-static void *gLightTypeHandleKlass;
+static const MethodInfo *gGetIntensityMethod;
 static const MethodInfo *gSetIntensityMethod;
-/*light缓存+type缓存标记(用klass指针做key type对象存gchandle)*/
+enum { kRussLightCacheMax = 1024 };
+typedef struct RussLightCacheEntry {
+    uint32_t handle;
+    float originalIntensity;
+} RussLightCacheEntry;
+static RussLightCacheEntry gLightCache[kRussLightCacheMax];
+/*高亮仅恢复本功能实际改写过的 Light，不能假定所有灯的默认强度都是 1。*/
+
+static NSInteger FindLightCacheEntry(Il2CppObject *light) {
+    if (light == NULL || gIl2CppGCHandleGetTarget == NULL) return NSNotFound;
+    for (NSInteger index = 0; index < kRussLightCacheMax; index++) {
+        if (gLightCache[index].handle != 0 &&
+            gIl2CppGCHandleGetTarget(gLightCache[index].handle) == light) return index;
+    }
+    return NSNotFound;
+}
+
+static NSUInteger RestoreHighlight(void) {
+    if (gSetIntensityMethod == NULL || gIl2CppGCHandleGetTarget == NULL) return 0;
+    NSUInteger restored = 0;
+    for (NSInteger index = 0; index < kRussLightCacheMax; index++) {
+        RussLightCacheEntry *entry = &gLightCache[index];
+        if (entry->handle == 0) continue;
+        Il2CppObject *light = gIl2CppGCHandleGetTarget(entry->handle);
+        if (light != NULL && isfinite(entry->originalIntensity)) {
+            void *arguments[] = { &entry->originalIntensity };
+            Il2CppObject *exception = NULL;
+            gIl2CppRuntimeInvoke(gSetIntensityMethod, light, arguments, &exception);
+            if (exception == NULL) restored++;
+        }
+        if (gIl2CppGCHandleFree != NULL) gIl2CppGCHandleFree(entry->handle);
+        entry->handle = 0;
+    }
+    return restored;
+}
 
 static NSUInteger ApplyHighlight(BOOL on, float brightness) {
     if (!EnsureIl2CppThread()) return 0;
@@ -578,25 +613,47 @@ static NSUInteger ApplyHighlight(BOOL on, float brightness) {
         if (gLightKlass == NULL) return 0;
     }
     if (gSetIntensityMethod == NULL) {
+        gGetIntensityMethod = gIl2CppClassGetMethodFromName(gLightKlass, "get_intensity", 0);
         gSetIntensityMethod = gIl2CppClassGetMethodFromName(gLightKlass, "set_intensity", 1);
-        if (gSetIntensityMethod == NULL) return 0;
+        if (gGetIntensityMethod == NULL || gSetIntensityMethod == NULL || gIl2CppObjectUnbox == NULL ||
+            gIl2CppGCHandleNew == NULL) return 0;
     }
+    if (!on) return RestoreHighlight();
     Il2CppArray *lights = ScanObjectsOfClass(gLightKlass, YES);
     if (lights == NULL) return 0;
-    float value = on ? brightness : 1.0f;
+    float value = (float)MAX(1.0, MIN(10.0, brightness));
     void *arguments[] = { &value };
     NSUInteger touched = 0;
     Il2CppObject *exception = NULL;
     for (uintptr_t index = 0; index < lights->maxLength; index++) {
         Il2CppObject *light = lights->objects[index];
         if (light == NULL) continue;
+        NSInteger slot = FindLightCacheEntry(light);
+        if (slot == NSNotFound) {
+            for (NSInteger candidate = 0; candidate < kRussLightCacheMax; candidate++) {
+                if (gLightCache[candidate].handle == 0) {
+                    slot = candidate;
+                    break;
+                }
+            }
+            if (slot == NSNotFound) continue;
+            exception = NULL;
+            Il2CppObject *current = gIl2CppRuntimeInvoke(gGetIntensityMethod, light, NULL, &exception);
+            if (exception != NULL || current == NULL) continue;
+            float *original = (float *)gIl2CppObjectUnbox(current);
+            if (original == NULL || !isfinite(*original)) continue;
+            uint32_t handle = gIl2CppGCHandleNew(light, NO);
+            if (handle == 0) continue;
+            gLightCache[slot].handle = handle;
+            gLightCache[slot].originalIntensity = *original;
+        }
         exception = NULL;
         gIl2CppRuntimeInvoke(gSetIntensityMethod, light, arguments, &exception);
         if (exception == NULL) touched++;
     }
     return touched;
 }
-/*light.set_intensity全场景灯亮度 高亮增强 关时恢复1.0*/
+/*高亮按原版 [1,10] 收敛；每盏灯首次改写前保存其实际强度，关闭时精确恢复。*/
 
 static void *gComponentKlass;
 static void *gGameObjectKlass;
@@ -771,9 +828,51 @@ static NSUInteger ApplyCoffinReveal(BOOL reveal) {
 /*Russ 原版显棺：混淆对象链定位目标 Image，缓存原 Color 后仅清 alpha；关闭时精确恢复*/
 
 static void *gRigidbodyKlass;
+static const MethodInfo *gGetDragMethod;
+static const MethodInfo *gGetAngularDragMethod;
 static const MethodInfo *gSetDragMethod;
 static const MethodInfo *gSetAngularDragMethod;
-/*rigidbody缓存*/
+enum { kRussRigidbodyCacheMax = 1024 };
+typedef struct RussRigidbodyCacheEntry {
+    uint32_t handle;
+    float originalDrag;
+    float originalAngularDrag;
+} RussRigidbodyCacheEntry;
+static RussRigidbodyCacheEntry gRigidbodyCache[kRussRigidbodyCacheMax];
+/*消磁功能的原值缓存；关闭时恢复每个实际修改过的刚体。*/
+
+static NSInteger FindRigidbodyCacheEntry(Il2CppObject *body) {
+    if (body == NULL || gIl2CppGCHandleGetTarget == NULL) return NSNotFound;
+    for (NSInteger index = 0; index < kRussRigidbodyCacheMax; index++) {
+        if (gRigidbodyCache[index].handle != 0 &&
+            gIl2CppGCHandleGetTarget(gRigidbodyCache[index].handle) == body) return index;
+    }
+    return NSNotFound;
+}
+
+static NSUInteger RestoreDemagnetization(void) {
+    if (gSetDragMethod == NULL || gIl2CppGCHandleGetTarget == NULL) return 0;
+    NSUInteger restored = 0;
+    for (NSInteger index = 0; index < kRussRigidbodyCacheMax; index++) {
+        RussRigidbodyCacheEntry *entry = &gRigidbodyCache[index];
+        if (entry->handle == 0) continue;
+        Il2CppObject *body = gIl2CppGCHandleGetTarget(entry->handle);
+        if (body != NULL && isfinite(entry->originalDrag) && isfinite(entry->originalAngularDrag)) {
+            void *dragArguments[] = { &entry->originalDrag };
+            void *angularArguments[] = { &entry->originalAngularDrag };
+            Il2CppObject *exception = NULL;
+            gIl2CppRuntimeInvoke(gSetDragMethod, body, dragArguments, &exception);
+            if (exception == NULL && gSetAngularDragMethod != NULL) {
+                exception = NULL;
+                gIl2CppRuntimeInvoke(gSetAngularDragMethod, body, angularArguments, &exception);
+            }
+            if (exception == NULL) restored++;
+        }
+        if (gIl2CppGCHandleFree != NULL) gIl2CppGCHandleFree(entry->handle);
+        entry->handle = 0;
+    }
+    return restored;
+}
 
 static NSUInteger ApplyDemagnetization(float strengthPercent) {
     if (!EnsureIl2CppThread()) return 0;
@@ -782,24 +881,51 @@ static NSUInteger ApplyDemagnetization(float strengthPercent) {
         if (gRigidbodyKlass == NULL) return 0;
     }
     if (gSetDragMethod == NULL) {
+        gGetDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "get_drag", 0);
+        gGetAngularDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "get_angularDrag", 0);
         gSetDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "set_drag", 1);
         gSetAngularDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "set_angularDrag", 1);
-        if (gSetDragMethod == NULL) return 0;
+        if (gGetDragMethod == NULL || gGetAngularDragMethod == NULL || gSetDragMethod == NULL ||
+            gSetAngularDragMethod == NULL || gIl2CppObjectUnbox == NULL || gIl2CppGCHandleNew == NULL) return 0;
     }
+    if (strengthPercent <= 0.0f) return RestoreDemagnetization();
     Il2CppArray *bodies = ScanObjectsOfClass(gRigidbodyKlass, YES);
     if (bodies == NULL) return 0;
-    /* 消磁强度0~100%映射:线性阻力=强度*0.1(0~10) 角阻力=强度*0.05
-       高阻力抵消磁吸/外力牵引 强度0时恢复unity默认drag=0 angulardrag=0.05 */
-    BOOL restore = strengthPercent <= 0.0;
-    float drag = restore ? 0.0f : (float)(strengthPercent * 0.1);
-    float angularDrag = restore ? 0.05f : (float)(strengthPercent * 0.05);
-    void *dragArgs[] = { &drag };
-    void *angularArgs[] = { &angularDrag };
+    float normalized = (float)MAX(0.0, MIN(100.0, strengthPercent)) / 100.0f;
+    /* 原版只保留 0~1 的强度状态；这里以该状态缩放目标刚体的原始阻尼。 */
     NSUInteger touched = 0;
     Il2CppObject *exception = NULL;
     for (uintptr_t index = 0; index < bodies->maxLength; index++) {
         Il2CppObject *body = bodies->objects[index];
         if (body == NULL) continue;
+        NSInteger slot = FindRigidbodyCacheEntry(body);
+        if (slot == NSNotFound) {
+            for (NSInteger candidate = 0; candidate < kRussRigidbodyCacheMax; candidate++) {
+                if (gRigidbodyCache[candidate].handle == 0) {
+                    slot = candidate;
+                    break;
+                }
+            }
+            if (slot == NSNotFound) continue;
+            exception = NULL;
+            Il2CppObject *dragObject = gIl2CppRuntimeInvoke(gGetDragMethod, body, NULL, &exception);
+            if (exception != NULL || dragObject == NULL) continue;
+            exception = NULL;
+            Il2CppObject *angularObject = gIl2CppRuntimeInvoke(gGetAngularDragMethod, body, NULL, &exception);
+            if (exception != NULL || angularObject == NULL) continue;
+            float *originalDrag = (float *)gIl2CppObjectUnbox(dragObject);
+            float *originalAngularDrag = (float *)gIl2CppObjectUnbox(angularObject);
+            if (originalDrag == NULL || originalAngularDrag == NULL || !isfinite(*originalDrag) || !isfinite(*originalAngularDrag)) continue;
+            uint32_t handle = gIl2CppGCHandleNew(body, NO);
+            if (handle == 0) continue;
+            gRigidbodyCache[slot].handle = handle;
+            gRigidbodyCache[slot].originalDrag = *originalDrag;
+            gRigidbodyCache[slot].originalAngularDrag = *originalAngularDrag;
+        }
+        float drag = gRigidbodyCache[slot].originalDrag * (1.0f - normalized);
+        float angularDrag = gRigidbodyCache[slot].originalAngularDrag * (1.0f - normalized);
+        void *dragArgs[] = { &drag };
+        void *angularArgs[] = { &angularDrag };
         exception = NULL;
         gIl2CppRuntimeInvoke(gSetDragMethod, body, dragArgs, &exception);
         if (gSetAngularDragMethod != NULL) {
@@ -810,7 +936,7 @@ static NSUInteger ApplyDemagnetization(float strengthPercent) {
     }
     return touched;
 }
-/*rigidbody.set_drag/set_angulardrag 消磁强度按百分比线性映射 关时恢复unity默认值*/
+/*消磁按原版 0~100% 转 0~1；每个刚体保留实际原始阻尼，关闭时精确恢复。*/
 
 static void *gFindPathLineCtrlKlass;
 static void *gLineRendererKlass;
@@ -1116,7 +1242,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
         @"firstPersonFOV": @{@"title": @"第一人称 FOV", @"icon": @"person.crop.circle", @"slider": @YES, @"min": @30.0, @"max": @170.0, @"unit": @"°"},
         @"thirdPersonFOV": @{@"title": @"第三人称 FOV", @"icon": @"figure.walking", @"slider": @YES, @"min": @30.0, @"max": @170.0, @"unit": @"°"},
         @"demagnetization": @{@"title": @"消磁强度", @"icon": @"bolt.slash.fill", @"slider": @YES, @"min": @0.0, @"max": @100.0, @"unit": @"%"},
-        @"globalSpeed": @{@"title": @"速度倍率", @"icon": @"hare.fill", @"slider": @YES, @"min": @0.5, @"max": @3.0, @"unit": @"x"}
+        @"globalSpeed": @{@"title": @"速度倍率", @"icon": @"hare.fill", @"slider": @YES, @"min": @1.0, @"max": @10.0, @"unit": @"x"}
     };
 }
 /*9张卡片定义 图标照原版sfsymbols 标题/说明/滑块范围 广角默认66度照原版widefov值*/
@@ -1532,12 +1658,11 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     CGFloat firstFOV = [self sliderValueForKey:@"firstPersonFOV"];
     CGFloat thirdFOV = [self sliderValueForKey:@"thirdPersonFOV"];
     BOOL wide = [self.featureStates[@"wide"] boolValue];
-    CGFloat effectiveFOV = wide ? 66.0 : thirdFOV;
     CGFloat speed = [self sliderValueForKey:@"globalSpeed"];
 
     if ([self.featureStates[@"fog"] boolValue]) ApplyFogRemoval(YES);
     if (speed != 1.0) ApplyTimeScale((float)speed);
-    ApplyCameraFollow((float)(wide ? 66.0 : thirdFOV), (float)(wide ? 66.0 : firstFOV));
+    ApplyCameraFollow((float)(wide ? 66.0 : thirdFOV), (float)firstFOV);
     if (heavyTick) {
         if ([self.featureStates[@"highlight"] boolValue]) ApplyHighlight(YES, 2.5f);
         if ([self.featureStates[@"demagnetization"] boolValue]) ApplyDemagnetization([self sliderValueForKey:@"demagnetization"]);
