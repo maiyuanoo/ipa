@@ -23,11 +23,14 @@ public class RecoverNative extends GhidraScript {
         return entryOffset == 0x17098L || entryOffset == 0x17184L ||
             entryOffset == 0x17720L || entryOffset == 0x195a8L ||
             entryOffset == 0x19cf0L || entryOffset == 0x19de8L ||
-            entryOffset == 0x1a0f4L || entryOffset == 0x1a330L ||
+            entryOffset == 0x1a0f4L || entryOffset == 0x1a2d8L ||
+            entryOffset == 0x1a330L ||
             entryOffset == 0x1a400L || entryOffset == 0x1a480L ||
             entryOffset == 0x1a4e8L || entryOffset == 0x1a540L ||
             entryOffset == 0x1a5b0L || entryOffset == 0x1a730L ||
-            entryOffset == 0x1a7b8L || entryOffset == 0x1ab08L;
+            entryOffset == 0x1a7b8L || entryOffset == 0x1aaa4L ||
+            entryOffset == 0x1ab08L || entryOffset == 0x1abecL ||
+            entryOffset == 0x1ac8cL || entryOffset == 0x1ad7cL;
     }
 
     @Override
