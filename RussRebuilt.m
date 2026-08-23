@@ -1761,27 +1761,13 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 /*判断是否有功能需要持续维持 */
 
 - (void)updateEngineStatus:(BOOL)connected {
-    NSInteger state = connected ? (NSInteger)gTargetEntityProbeState + 1 : 0;
+    /* 状态只表示 IL2CPP 是否可用，不把可选分析探针作为功能前置条件。 */
+    NSInteger state = connected ? 1 : 0;
     if (state == self.engineStatusState) return;
     self.engineStatusState = state;
     if (self.engineStatus == nil) return;
     if (connected) {
-        if (gTargetEntityProbeState == TargetEntityProbeReady && gTargetEntityProbeReady) {
-            self.engineStatus.text = [NSString stringWithFormat:@"引擎:实体 A%lu U%lu/%lu",
-                                      (unsigned long)gTargetActorCount,
-                                      (unsigned long)gTargetUgcCount,
-                                      (unsigned long)gTargetUgcMapCount];
-        } else if (gTargetEntityProbeState == TargetEntityProbeWaitingAssembly) {
-            self.engineStatus.text = @"引擎:等待热更";
-        } else if (gTargetEntityProbeState == TargetEntityProbeWaitingFields) {
-            self.engineStatus.text = @"引擎:字段不匹配";
-        } else if (gTargetEntityProbeState == TargetEntityProbeWaitingSingleton) {
-            self.engineStatus.text = @"引擎:等待场景";
-        } else if (gTargetEntityProbeState == TargetEntityProbeWaitingCollections) {
-            self.engineStatus.text = @"引擎:集合未就绪";
-        } else {
-            self.engineStatus.text = @"引擎:已连接";
-        }
+        self.engineStatus.text = @"引擎:已连接";
         self.engineStatus.textColor = [UIColor colorWithRed:0.30 green:0.85 blue:0.70 alpha:1.0];
     } else {
         self.engineStatus.text = @"引擎:连接中";
@@ -1799,7 +1785,11 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     }
 
     BOOL heavyTick = (self.runtimeFrameTick % 30 == 0);
-    if (heavyTick) ProbeTargetEntityCollections();
+    /*
+     * 实体集合探针依赖某一版 UpdateScript 的混淆类名和字段名，仅用于
+     * 离线分析验证。它不参与功能实现，不能在运行时帧循环中执行，
+     * 以避免热更新换代或场景切换时的反射访问影响独立功能稳定性。
+     */
     [self updateEngineStatus:connected];
     BOOL anyActive = [self anyFeatureActive];
     if (heavyTick) [self refreshEngineFrameRate];
