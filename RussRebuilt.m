@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>/* uiview uibutton uislider ui界面*/
 #import <QuartzCore/CADisplayLink.h>/*cadisplaylink每帧回调*/
 #import <dlfcn.h>/*动态找il2cpp原生c函数地址 */
+#import <mach-o/dyld.h>/*枚举已加载镜像找unityframework完整路径*/
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -19,7 +20,8 @@ typedef struct Il2CppArray {
     uintptr_t maxLength;
     Il2CppObject *objects[];
 } Il2CppArray;
-/* il2cpp基础前向声明 数组结构体*/
+/* il2cpp基础前向声明 数组结构体(头16字节klass+monitor bounds 8 max_length 8 数据从32开始)*/
+
 typedef Il2CppDomain *(*Il2CppDomainGet)(void);
 typedef Il2CppAssembly **(*Il2CppDomainGetAssemblies)(const Il2CppDomain *domain, size_t *size);
 typedef const Il2CppImage *(*Il2CppAssemblyGetImage)(const Il2CppAssembly *assembly);
@@ -30,9 +32,17 @@ typedef size_t (*Il2CppFieldGetOffset)(void *field);
 typedef void (*Il2CppFieldSetValue)(void *object, void *field, void *value);
 typedef Il2CppObject *(*Il2CppRuntimeInvoke)(const MethodInfo *method, void *object, void **parameters, Il2CppObject **exception);
 typedef void *(*Il2CppThreadAttach)(Il2CppDomain *domain);
-typedef Il2CppObject *(*Il2CppObjectUnbox)(Il2CppObject *object);
+typedef void *(*Il2CppObjectUnbox)(Il2CppObject *object);
 typedef const char *(*Il2CppImageGetName)(const Il2CppImage *image);
-/*ilcpp定义指针 dlsym调用 */
+typedef const void *(*Il2CppClassGetType)(void *klass);
+typedef Il2CppObject *(*Il2CppTypeGetObject)(const void *type);
+typedef void (*Il2CppFieldStaticGetValue)(void *field, void *value);
+typedef void *(*Il2CppClassGetParent)(void *klass);
+typedef uint32_t (*Il2CppGCHandleNew)(Il2CppObject *object, BOOL pinned);
+typedef Il2CppObject *(*Il2CppGCHandleGetTarget)(uint32_t handle);
+typedef void (*Il2CppGCHandleFree)(uint32_t handle);
+/*il2cpp api函数指针类型 原版dylib同款全套(import表已验证)*/
+
 static Il2CppDomainGet gIl2CppDomainGet;
 static Il2CppDomainGetAssemblies gIl2CppDomainGetAssemblies;
 static Il2CppAssemblyGetImage gIl2CppAssemblyGetImage;
@@ -44,17 +54,45 @@ static Il2CppFieldSetValue gIl2CppFieldSetValue;
 static Il2CppRuntimeInvoke gIl2CppRuntimeInvoke;
 static Il2CppThreadAttach gIl2CppThreadAttach;
 static Il2CppObjectUnbox gIl2CppObjectUnbox;
-static void *gUnityFrameworkHandle;
+static Il2CppImageGetName gIl2CppImageGetName;
 static const void *(*gIl2CppClassGetType)(void *klass);
 static Il2CppObject *(*gIl2CppTypeGetObject)(const void *type);
 static void (*gIl2CppFieldStaticGetValue)(void *field, void *value);
-static Il2CppImageGetName gIl2CppImageGetName;
-/*unityframework句柄+二级api class_get_type+type_get_object替代未导出的get_type_object */
-static BOOL ResolveIl2Cpp(void) {
-    if (gIl2CppDomainGet != NULL) {
-        return YES;
+static void *(*gIl2CppClassGetParent)(void *klass);
+static Il2CppGCHandleNew gIl2CppGCHandleNew;
+static Il2CppGCHandleGetTarget gIl2CppGCHandleGetTarget;
+static Il2CppGCHandleFree gIl2CppGCHandleFree;
+
+static void *gUnityFrameworkHandle;
+static BOOL gIl2CppSymbolsResolved;
+static BOOL gIl2CppThreadReady;
+/*unityframework句柄 符号解析完成标记 主线程attach标记*/
+
+static BOOL ResolveIl2CppSymbols(void) {
+    if (gIl2CppSymbolsResolved) return YES;
+
+    /* 关键修复:照原版dylib(0x1bb10)枚举dyld已加载镜像,
+       拿UnityFramework的完整绝对路径再dlopen。
+       相对路径dlopen在iOS上必失败(按CWD=/解析),
+       RTLD_DEFAULT在两级命名空间下也找不到UnityFramework符号,
+       这是之前所有功能全部无效的根因。 */
+    if (gUnityFrameworkHandle == NULL) {
+        uint32_t imageCount = _dyld_image_count();
+        for (uint32_t i = 0; i < imageCount; i++) {
+            const char *name = _dyld_get_image_name(i);
+            if (name == NULL) continue;
+            if (strstr(name, "UnityFramework.framework/UnityFramework") == NULL) continue;
+            gUnityFrameworkHandle = dlopen(name, RTLD_LAZY | RTLD_GLOBAL);
+            break;
+        }
     }
-    gUnityFrameworkHandle = dlopen("UnityFramework.framework/UnityFramework", RTLD_LAZY | RTLD_GLOBAL);
+    if (gUnityFrameworkHandle == NULL) {
+        gUnityFrameworkHandle = dlopen("@rpath/UnityFramework.framework/UnityFramework", RTLD_LAZY | RTLD_GLOBAL);
+    }
+    if (gUnityFrameworkHandle == NULL) {
+        gUnityFrameworkHandle = dlopen("UnityFramework.framework/UnityFramework", RTLD_LAZY | RTLD_GLOBAL);
+    }
+
     void *base = gUnityFrameworkHandle != NULL ? gUnityFrameworkHandle : RTLD_DEFAULT;
     gIl2CppDomainGet = (Il2CppDomainGet)dlsym(base, "il2cpp_domain_get");
     gIl2CppDomainGetAssemblies = (Il2CppDomainGetAssemblies)dlsym(base, "il2cpp_domain_get_assemblies");
@@ -67,393 +105,392 @@ static BOOL ResolveIl2Cpp(void) {
     gIl2CppRuntimeInvoke = (Il2CppRuntimeInvoke)dlsym(base, "il2cpp_runtime_invoke");
     gIl2CppThreadAttach = (Il2CppThreadAttach)dlsym(base, "il2cpp_thread_attach");
     gIl2CppObjectUnbox = (Il2CppObjectUnbox)dlsym(base, "il2cpp_object_unbox");
-    return gIl2CppDomainGet != NULL && gIl2CppDomainGetAssemblies != NULL &&
-        gIl2CppAssemblyGetImage != NULL && gIl2CppClassFromName != NULL &&
-        gIl2CppClassGetMethodFromName != NULL && gIl2CppRuntimeInvoke != NULL;
+    gIl2CppImageGetName = (Il2CppImageGetName)dlsym(base, "il2cpp_image_get_name");
+    gIl2CppClassGetType = (const void *(*)(void *))dlsym(base, "il2cpp_class_get_type");
+    gIl2CppTypeGetObject = (Il2CppObject *(*)(const void *))dlsym(base, "il2cpp_type_get_object");
+    gIl2CppFieldStaticGetValue = (void (*)(void *, void *))dlsym(base, "il2cpp_field_static_get_value");
+    gIl2CppClassGetParent = (void *(*)(void *))dlsym(base, "il2cpp_class_get_parent");
+    gIl2CppGCHandleNew = (Il2CppGCHandleNew)dlsym(base, "il2cpp_gchandle_new");
+    gIl2CppGCHandleGetTarget = (Il2CppGCHandleGetTarget)dlsym(base, "il2cpp_gchandle_get_target");
+    gIl2CppGCHandleFree = (Il2CppGCHandleFree)dlsym(base, "il2cpp_gchandle_free");
+
+    if (gIl2CppDomainGet == NULL || gIl2CppDomainGetAssemblies == NULL ||
+        gIl2CppAssemblyGetImage == NULL || gIl2CppClassFromName == NULL ||
+        gIl2CppClassGetMethodFromName == NULL || gIl2CppRuntimeInvoke == NULL ||
+        gIl2CppFieldGetOffset == NULL) {
+        return NO;
+    }
+    gIl2CppSymbolsResolved = YES;
+    return YES;
 }
-/*照原版显式dlopen unityframework 失败回退rtld_default */
-static void ResolveSecondaryApi(void) {
-    if (gIl2CppDomainGet == NULL) return;
-    void *base = gUnityFrameworkHandle != NULL ? gUnityFrameworkHandle : RTLD_DEFAULT;
-    if (gIl2CppClassGetType == NULL) gIl2CppClassGetType = (const void *(*)(void *))dlsym(base, "il2cpp_class_get_type");
-    if (gIl2CppTypeGetObject == NULL) gIl2CppTypeGetObject = (Il2CppObject *(*)(const void *))dlsym(base, "il2cpp_type_get_object");
-    if (gIl2CppFieldStaticGetValue == NULL) gIl2CppFieldStaticGetValue = (void (*)(void *, void *))dlsym(base, "il2cpp_field_static_get_value");
-    if (gIl2CppImageGetName == NULL) gIl2CppImageGetName = (Il2CppImageGetName)dlsym(base, "il2cpp_image_get_name");
+/*一次性解析全部il2cpp符号(主+二级+gchandle) 必需项缺失则下次重试*/
+
+static BOOL EnsureIl2CppThread(void) {
+    if (!ResolveIl2CppSymbols()) return NO;
+    Il2CppDomain *domain = gIl2CppDomainGet();
+    if (domain == NULL) return NO;/*unity尚未初始化完成 引擎tick会持续重试*/
+    if (!gIl2CppThreadReady && gIl2CppThreadAttach != NULL) {
+        if (gIl2CppThreadAttach(domain) != NULL) gIl2CppThreadReady = YES;
+    }
+    return YES;
 }
-/*首次调用时解析二级api */
+/*所有invoke前统一走这里:符号+域+线程attach三重保障 主线程unity已attach重复调用无害*/
+
 static Il2CppObject *GetTypeObjectForClass(void *klass) {
     if (klass == NULL) return NULL;
-    ResolveSecondaryApi();
     if (gIl2CppClassGetType == NULL || gIl2CppTypeGetObject == NULL) return NULL;
     const void *type = gIl2CppClassGetType(klass);
     if (type == NULL) return NULL;
     return gIl2CppTypeGetObject(type);
 }
-/*class→system.type对象 已验证class_get_type/type_get_object均导出 */
-static Il2CppObject *GetTypeObjectForClass(void *klass);
-static void *FindClassInAllAssemblies(const char *namespaceName, const char *className);
-/*前置声明 避免调用顺序问题 */
-static void *FindClass(const char *assemblyName, const char *namespaceName, const char *className) {
-    if (!ResolveIl2Cpp()) return NULL;
-    ResolveSecondaryApi();
+/*class→system.type对象 已验证class_get_type/type_get_object均导出*/
+
+static void *FindClassInAllAssemblies(const char *namespaceName, const char *className) {
+    if (!EnsureIl2CppThread()) return NULL;
     Il2CppDomain *domain = gIl2CppDomainGet();
-    if (domain == NULL) return NULL;
-    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
     size_t count = 0;
     Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &count);
+    if (assemblies == NULL || count == 0 || count > 4096) return NULL;
     for (size_t i = 0; i < count; i++) {
         const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[i]);
-        if (gIl2CppImageGetName != NULL && assemblyName != NULL) {
-            const char *name = gIl2CppImageGetName(image);
-            if (name == NULL || strstr(name, assemblyName) != name) {
-                void *tryKlass = gIl2CppClassFromName(image, namespaceName, className);
-                if (tryKlass != NULL) return tryKlass;
-                continue;
-            }
-        }
+        if (image == NULL) continue;
         void *klass = gIl2CppClassFromName(image, namespaceName, className);
         if (klass != NULL) return klass;
     }
     return NULL;
 }
-/* findclass 按程序集名(子串匹配 兼容热更assembly.load大小写) 命名空间 类名查c#类 */
+/*跨全部程序集找类(照原版0x178a0循环):热更类camerafollow/ugcobjectcoffin命名空间为"" 引擎类为"UnityEngine" dll已验证*/
+
+#define kRussTypeCacheMax 12
+static void *gTypeCacheKlass[kRussTypeCacheMax];
+static uint32_t gTypeCacheHandle[kRussTypeCacheMax];
+/*类型对象缓存:用gchandle钉住type对象防GC回收 照原版gchandle用法*/
+
+static Il2CppObject *GetTypeObjectForClassCached(void *klass) {
+    if (klass == NULL) return NULL;
+    for (int i = 0; i < kRussTypeCacheMax; i++) {
+        if (gTypeCacheKlass[i] == NULL) break;
+        if (gTypeCacheKlass[i] != klass) continue;
+        if (gTypeCacheHandle[i] != 0 && gIl2CppGCHandleGetTarget != NULL) {
+            return gIl2CppGCHandleGetTarget(gTypeCacheHandle[i]);
+        }
+        return NULL;
+    }
+    Il2CppObject *typeObject = GetTypeObjectForClass(klass);
+    if (typeObject == NULL) return NULL;
+    for (int i = 0; i < kRussTypeCacheMax; i++) {
+        if (gTypeCacheKlass[i] != NULL) continue;
+        gTypeCacheKlass[i] = klass;
+        if (gIl2CppGCHandleNew != NULL) {
+            gTypeCacheHandle[i] = gIl2CppGCHandleNew(typeObject, NO);
+        }
+        break;
+    }
+    return typeObject;
+}
+/*带缓存的type对象获取 扫描功能每0.5s调用避免重复构造*/
+
 static void *gCameraFollowKlass;
-/*camerafollow类缓存(热更程序集晚加载 首次找到后缓存) 实例每次现取防野指针 */
+static void *gCameraFollowFieldKlass;
+static void *gUGC2FOVField;
+static void *gUGC2FirstFOVField;
+/*camerafollow类/字段句柄缓存(fieldinfo属于静态元数据不会被GC 照原版field_get_offset后直写等价)*/
+
+static BOOL ValidateInstanceOfClass(Il2CppObject *instance, void *klass) {
+    if (instance == NULL || klass == NULL) return NO;
+    void *objKlass = *(void **)instance;/*il2cpp对象头第一个字段=class指针 原版0x17cac同款校验*/
+    if (objKlass == klass) return YES;
+    if (gIl2CppClassGetParent != NULL) {
+        for (int i = 0; i < 8 && objKlass != NULL; i++) {
+            objKlass = gIl2CppClassGetParent(objKlass);
+            if (objKlass == klass) return YES;
+        }
+    }
+    return NO;
+}
+/*实例类校验:对象头class指针匹配或父类链匹配 防野指针/错拿*/
+
 static Il2CppObject *GetCameraFollowInstance(void) {
-    if (!ResolveIl2Cpp()) return NULL;
+    if (!EnsureIl2CppThread()) return NULL;
     if (gCameraFollowKlass == NULL) {
-        gCameraFollowKlass = FindClass("UpdateScript_500", "", "CameraFollow");
+        gCameraFollowKlass = FindClassInAllAssemblies("", "CameraFollow");
         if (gCameraFollowKlass == NULL) return NULL;
     }
-    Il2CppObject *exception = NULL;
+
+    /* 1) 原版首选(0x192d4):单例静态字段 <BAMKDIBPDKB>k__BackingField
+       热更dll里没有这个名字时class_get_field_from_name返回null自然跳过 */
+    if (gIl2CppFieldStaticGetValue != NULL && gIl2CppClassGetFieldFromName != NULL) {
+        static const char *kInstanceFields[] = {
+            "<BAMKDIBPDKB>k__BackingField", "instance", "Instance",
+            "_instance", "mInstance", "m_instance"
+        };
+        for (size_t i = 0; i < 6; i++) {
+            void *field = gIl2CppClassGetFieldFromName(gCameraFollowKlass, kInstanceFields[i]);
+            if (field == NULL) continue;
+            Il2CppObject *instance = NULL;
+            gIl2CppFieldStaticGetValue(field, &instance);
+            if (ValidateInstanceOfClass(instance, gCameraFollowKlass)) return instance;
+        }
+    }
+
+    /* 2) 原版次选(0x19454):get_instance属性 getter返回即权威结果 */
     const MethodInfo *getInstance = gIl2CppClassGetMethodFromName(gCameraFollowKlass, "get_instance", 0);
     if (getInstance != NULL) {
+        Il2CppObject *exception = NULL;
         Il2CppObject *instance = gIl2CppRuntimeInvoke(getInstance, NULL, NULL, &exception);
         if (exception == NULL && instance != NULL) return instance;
     }
-    ResolveSecondaryApi();
-    static const char *kInstanceNames[] = { "instance", "Instance", "_instance", "mInstance", "m_instance" };
-    for (size_t i = 0; i < 5 && gIl2CppFieldStaticGetValue != NULL; i++) {
-        void *field = gIl2CppClassGetFieldFromName(gCameraFollowKlass, kInstanceNames[i]);
-        if (field == NULL) continue;
-        Il2CppObject *instance = NULL;
-        gIl2CppFieldStaticGetValue(field, &instance);
-        if (instance != NULL) return instance;
-    }
     return NULL;
 }
-/*原版dylib确认调用get_instance 备用静态字段instance 每次现取不缓存防gc/销毁后野指针 */
+/*camerafollow单例获取:静态字段→get_instance 双路径照原版顺序 每次现取不缓存实例防GC后野指针*/
+
 static BOOL ApplyCameraFollow(float thirdPersonFov, float firstPersonFov) {
+    if (!EnsureIl2CppThread()) return NO;
     Il2CppObject *instance = GetCameraFollowInstance();
     if (instance == NULL) return NO;
-    void *klass = gCameraFollowKlass != NULL ? gCameraFollowKlass : *(void **)instance;
-    if (gIl2CppClassGetFieldFromName == NULL || gIl2CppFieldSetValue == NULL) return NO;
+    void *objKlass = *(void **)instance;
+    if (objKlass == NULL) return NO;
+
+    /* 字段句柄随实例类缓存 热更换代(类指针变化)自动重解析 */
+    if (objKlass != gCameraFollowFieldKlass || (gUGC2FOVField == NULL && gUGC2FirstFOVField == NULL)) {
+        gCameraFollowFieldKlass = objKlass;
+        gUGC2FOVField = gIl2CppClassGetFieldFromName(objKlass, "UGC2FOV");
+        gUGC2FirstFOVField = gIl2CppClassGetFieldFromName(objKlass, "UGC2FirstFOV");
+    }
+    if (gUGC2FOVField == NULL && gUGC2FirstFOVField == NULL) return NO;
+
     float firstValue = (float)MAX(30.0, MIN(170.0, firstPersonFov));
     float thirdValue = (float)MAX(30.0, MIN(170.0, thirdPersonFov));
-    void *firstField = gIl2CppClassGetFieldFromName(klass, "UGC2FirstFOV");
-    void *thirdField = gIl2CppClassGetFieldFromName(klass, "UGC2FOV");
-    BOOL done = NO;
-    if (firstField != NULL) {
-        gIl2CppFieldSetValue(instance, firstField, &firstValue);
-        done = YES;
+    if (gIl2CppFieldSetValue != NULL) {
+        if (gUGC2FirstFOVField != NULL) gIl2CppFieldSetValue(instance, gUGC2FirstFOVField, &firstValue);
+        if (gUGC2FOVField != NULL) gIl2CppFieldSetValue(instance, gUGC2FOVField, &thirdValue);
+        return YES;
     }
-    if (thirdField != NULL) {
-        gIl2CppFieldSetValue(instance, thirdField, &thirdValue);
-        done = YES;
+    /* 后备:field_get_offset+同进程直写(等价原版vm_write方案) */
+    if (gIl2CppFieldGetOffset != NULL) {
+        if (gUGC2FirstFOVField != NULL) {
+            size_t offset = gIl2CppFieldGetOffset(gUGC2FirstFOVField);
+            *(float *)((uint8_t *)instance + offset) = firstValue;
+        }
+        if (gUGC2FOVField != NULL) {
+            size_t offset = gIl2CppFieldGetOffset(gUGC2FOVField);
+            *(float *)((uint8_t *)instance + offset) = thirdValue;
+        }
+        return YES;
     }
-    return done;
+    return NO;
 }
-/*camerafollow.ugc2fov/ugc2firstfov字段直写 fieldsetvalue 原版同款字段名 dll已验证 */
-static NSUInteger ApplyFieldOfView(CGFloat fieldOfView) {
-    if (!ResolveIl2Cpp()) return 0;
-    Il2CppDomain *domain = gIl2CppDomainGet();
-    if (domain == NULL) return 0;
-    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
+/*camerafollow.ugc2fov/ugc2firstfov字段直写 原版每tick写两字段+clamp[30,170] 完全对齐*/
 
-    size_t assemblyCount = 0;
-    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
-    void *cameraClass = NULL;
-    for (size_t index = 0; index < assemblyCount && cameraClass == NULL; index++) {
-        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
-        cameraClass = gIl2CppClassFromName(image, "UnityEngine", "Camera");
+static void *gCameraKlass;
+static const MethodInfo *gGetAllCamerasMethod;
+static const MethodInfo *gSetFieldOfViewMethod;
+static const MethodInfo *gGetOrthographicMethod;
+static const MethodInfo *gGetTargetTextureMethod;
+static const MethodInfo *gGetMainMethod;
+static const MethodInfo *gWorldToScreenMethod;
+/*camera类及方法缓存(引擎类静态元数据永生 可安全缓存)*/
+
+static BOOL EnsureCameraApi(void) {
+    if (gCameraKlass != NULL && gGetAllCamerasMethod != NULL && gSetFieldOfViewMethod != NULL) return YES;
+    if (!EnsureIl2CppThread()) return NO;
+    if (gCameraKlass == NULL) {
+        gCameraKlass = FindClassInAllAssemblies("UnityEngine", "Camera");
+        if (gCameraKlass == NULL) return NO;
     }
-    if (cameraClass == NULL) return 0;
+    if (gGetAllCamerasMethod == NULL) gGetAllCamerasMethod = gIl2CppClassGetMethodFromName(gCameraKlass, "get_allCameras", 0);
+    if (gSetFieldOfViewMethod == NULL) gSetFieldOfViewMethod = gIl2CppClassGetMethodFromName(gCameraKlass, "set_fieldOfView", 1);
+    if (gGetOrthographicMethod == NULL) gGetOrthographicMethod = gIl2CppClassGetMethodFromName(gCameraKlass, "get_orthographic", 0);
+    if (gGetTargetTextureMethod == NULL) gGetTargetTextureMethod = gIl2CppClassGetMethodFromName(gCameraKlass, "get_targetTexture", 0);
+    if (gGetMainMethod == NULL) gGetMainMethod = gIl2CppClassGetMethodFromName(gCameraKlass, "get_main", 0);
+    if (gWorldToScreenMethod == NULL) gWorldToScreenMethod = gIl2CppClassGetMethodFromName(gCameraKlass, "WorldToScreenPoint", 1);
+    return gGetAllCamerasMethod != NULL && gSetFieldOfViewMethod != NULL;
+}
+/*camera api一次性解析 每帧fov写不再重复查找*/
 
-    const MethodInfo *allCameras = gIl2CppClassGetMethodFromName(cameraClass, "get_allCameras", 0);
-    const MethodInfo *setFieldOfView = gIl2CppClassGetMethodFromName(cameraClass, "set_fieldOfView", 1);
-    const MethodInfo *getOrthographic = gIl2CppClassGetMethodFromName(cameraClass, "get_orthographic", 0);
-    const MethodInfo *getTargetTexture = gIl2CppClassGetMethodFromName(cameraClass, "get_targetTexture", 0);
-    if (allCameras == NULL || setFieldOfView == NULL) return 0;
+static NSUInteger ApplyFieldOfView(CGFloat fieldOfView) {
+    if (!EnsureCameraApi()) return 0;
 
     Il2CppObject *exception = NULL;
-    Il2CppArray *cameras = (Il2CppArray *)gIl2CppRuntimeInvoke(allCameras, NULL, NULL, &exception);
+    Il2CppArray *cameras = (Il2CppArray *)gIl2CppRuntimeInvoke(gGetAllCamerasMethod, NULL, NULL, &exception);
     if (exception != NULL || cameras == NULL) return 0;
 
-    float value = (float)MAX(20.0, MIN(175.0, fieldOfView));
+    float value = (float)MAX(30.0, MIN(170.0, fieldOfView));
     void *arguments[] = { &value };
     NSUInteger touched = 0;
     for (uintptr_t index = 0; index < cameras->maxLength; index++) {
         Il2CppObject *camera = cameras->objects[index];
         if (camera == NULL) continue;
-        if (getOrthographic != NULL && gIl2CppObjectUnbox != NULL) {
+        if (gGetOrthographicMethod != NULL && gIl2CppObjectUnbox != NULL) {
             exception = NULL;
-            Il2CppObject *orthoObj = gIl2CppRuntimeInvoke(getOrthographic, camera, NULL, &exception);
+            Il2CppObject *orthoObj = gIl2CppRuntimeInvoke(gGetOrthographicMethod, camera, NULL, &exception);
             if (exception == NULL && orthoObj != NULL) {
                 BOOL isOrtho = *((BOOL *)gIl2CppObjectUnbox(orthoObj));
                 if (isOrtho) continue;
             }
         }
-        if (getTargetTexture != NULL) {
+        if (gGetTargetTextureMethod != NULL) {
             exception = NULL;
-            Il2CppObject *rtObj = gIl2CppRuntimeInvoke(getTargetTexture, camera, NULL, &exception);
+            Il2CppObject *rtObj = gIl2CppRuntimeInvoke(gGetTargetTextureMethod, camera, NULL, &exception);
             if (exception == NULL && rtObj != NULL) continue;
         }
         exception = NULL;
-        gIl2CppRuntimeInvoke(setFieldOfView, camera, arguments, &exception);
+        gIl2CppRuntimeInvoke(gSetFieldOfViewMethod, camera, arguments, &exception);
         if (exception == NULL) touched++;
     }
     return touched;
 }
-/*camera.get_allcameras遍历 跳过get_orthographic正交和get_targettexture渲染纹理 对剩余相机set_fieldofview */
-static Il2CppArray *ScanObjectsByType(const char *targetClassName, BOOL includeInactive) {
-    if (!ResolveIl2Cpp()) return NULL;
-    Il2CppDomain *domain = gIl2CppDomainGet();
-    if (domain == NULL) return NULL;
-    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
+/*camera.get_allcameras遍历 跳过正交和渲染纹理相机 set_fieldofview clamp[30,170]照原版*/
 
-    size_t assemblyCount = 0;
-    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
-    void *targetKlass = NULL;
-    void *hostKlass = NULL;
-    const char *hostClassName = includeInactive ? "Resources" : "Object";
-    for (size_t index = 0; index < assemblyCount; index++) {
-        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
-        if (targetKlass == NULL) targetKlass = gIl2CppClassFromName(image, "UnityEngine", targetClassName);
-        if (hostKlass == NULL) hostKlass = gIl2CppClassFromName(image, "UnityEngine", hostClassName);
-        if (targetKlass != NULL && hostKlass != NULL) break;
+static void *gObjectKlass;
+static void *gResourcesKlass;
+static const MethodInfo *gFindObjectsOfTypeMethod;
+static const MethodInfo *gFindObjectsOfTypeAllMethod;
+/*object/resources类+扫描方法缓存*/
+
+static BOOL EnsureScanApi(void) {
+    if (gObjectKlass != NULL && gResourcesKlass != NULL &&
+        gFindObjectsOfTypeMethod != NULL && gFindObjectsOfTypeAllMethod != NULL) return YES;
+    if (!EnsureIl2CppThread()) return NO;
+    if (gObjectKlass == NULL) gObjectKlass = FindClassInAllAssemblies("UnityEngine", "Object");
+    if (gResourcesKlass == NULL) gResourcesKlass = FindClassInAllAssemblies("UnityEngine", "Resources");
+    if (gObjectKlass == NULL || gResourcesKlass == NULL) return NO;
+    if (gFindObjectsOfTypeMethod == NULL) {
+        gFindObjectsOfTypeMethod = gIl2CppClassGetMethodFromName(gObjectKlass, "FindObjectsOfType", 1);
     }
-    if (targetKlass == NULL || hostKlass == NULL) return NULL;
-
-    const MethodInfo *findMethod = NULL;
-    if (includeInactive) {
-        findMethod = gIl2CppClassGetMethodFromName(hostKlass, "FindObjectsOfTypeAll", 1);
-        if (findMethod == NULL) {
-            void *objectKlass = FindClassInAllAssemblies("UnityEngine", "Object");
-            if (objectKlass != NULL) findMethod = gIl2CppClassGetMethodFromName(objectKlass, "FindObjectsOfTypeAll", 1);
-        }
-    } else {
-        findMethod = gIl2CppClassGetMethodFromName(hostKlass, "FindObjectsOfType", 1);
+    if (gFindObjectsOfTypeAllMethod == NULL) {
+        gFindObjectsOfTypeAllMethod = gIl2CppClassGetMethodFromName(gResourcesKlass, "FindObjectsOfTypeAll", 1);
     }
-    if (findMethod == NULL) return NULL;
+    return gFindObjectsOfTypeMethod != NULL && gFindObjectsOfTypeAllMethod != NULL;
+}
+/*扫描api缓存:object.findobjectsoftype(可见)+resources.findobjectsoftypeall(含隐藏) 照原版0x1a5b0*/
 
-    Il2CppObject *typeObject = GetTypeObjectForClass(targetKlass);
+static Il2CppArray *ScanObjectsOfClass(void *targetKlass, BOOL includeInactive) {
+    if (targetKlass == NULL || !EnsureScanApi()) return NULL;
+    Il2CppObject *typeObject = GetTypeObjectForClassCached(targetKlass);
     if (typeObject == NULL) return NULL;
-
-
+    const MethodInfo *findMethod = includeInactive ? gFindObjectsOfTypeAllMethod : gFindObjectsOfTypeMethod;
     Il2CppObject *exception = NULL;
-    void *arguments[] = { typeObject };
+    void *arguments[] = { typeObject };/*引用类型参数直接传对象指针(不能取地址!)*/
     return (Il2CppArray *)gIl2CppRuntimeInvoke(findMethod, NULL, arguments, &exception);
 }
-/*统一扫描 gettypeobjectforclass拿type 引用类型参数直接传对象指针(不能取地址!) host为resources.findobjectsoftypeall或object.findobjectsoftype */
-
-static void ApplyTimeScale(float multiplier) {
-    if (!ResolveIl2Cpp()) return;
-    Il2CppDomain *domain = gIl2CppDomainGet();
-    if (domain == NULL) return;
-    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
-
-    size_t assemblyCount = 0;
-    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
-    void *timeKlass = NULL;
-    for (size_t index = 0; index < assemblyCount && timeKlass == NULL; index++) {
-        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
-        timeKlass = gIl2CppClassFromName(image, "UnityEngine", "Time");
-    }
-    if (timeKlass == NULL || gIl2CppClassGetMethodFromName == NULL) return;
-
-    const MethodInfo *setTimeScale = gIl2CppClassGetMethodFromName(timeKlass, "set_timeScale", 1);
-    if (setTimeScale == NULL) return;
-
-    float value = (float)MAX(0.0, MIN(3.0, multiplier));
-    void *arguments[] = { &value };
-    Il2CppObject *exception = NULL;
-    gIl2CppRuntimeInvoke(setTimeScale, NULL, arguments, &exception);
-}
-/*time.set_timescale静态调用 改全局时间倍率 0冻结1正常>1加速 */
-static NSUInteger SetAllLineRenderersVisible(BOOL visible, BOOL includeInactive) {
-    if (!ResolveIl2Cpp()) return 0;
-    Il2CppDomain *domain = gIl2CppDomainGet();
-    if (domain == NULL) return 0;
-    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
-
-    size_t assemblyCount = 0;
-    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
-    void *lineKlass = NULL;
-    void *rendererKlass = NULL;
-    for (size_t index = 0; index < assemblyCount; index++) {
-        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
-        if (lineKlass == NULL) lineKlass = gIl2CppClassFromName(image, "UnityEngine", "LineRenderer");
-        if (rendererKlass == NULL) rendererKlass = gIl2CppClassFromName(image, "UnityEngine", "Renderer");
-        if (lineKlass != NULL && rendererKlass != NULL) break;
-    }
-    if (lineKlass == NULL || rendererKlass == NULL) return 0;
-
-    Il2CppArray *result = ScanObjectsByType("LineRenderer", includeInactive);
-    if (result == NULL) return 0;
-
-    const MethodInfo *setEnabled = gIl2CppClassGetMethodFromName(rendererKlass, "set_enabled", 1);
-    if (setEnabled == NULL) return 0;
-
-    BOOL value = visible ? YES : NO;
-    void *enableArgs[] = { &value };
-    NSUInteger touched = 0;
-    Il2CppObject *exception = NULL;
-    for (uintptr_t index = 0; index < result->maxLength; index++) {
-        Il2CppObject *lineRenderer = result->objects[index];
-        if (lineRenderer == NULL) continue;
-        exception = NULL;
-        gIl2CppRuntimeInvoke(setEnabled, lineRenderer, enableArgs, &exception);
-        if (exception == NULL) touched++;
-    }
-    return touched;
-}
-/*object.findsoftype(typeof(linerenderer))扫描全部linerenderer renderer.set_enabled切显隐 */
-static void *gCameraKlass;
-static void *gComponentKlass;
-static void *gTransformKlass;
-/*缓存camerA/component/transform类避免每帧重复查 */
-static BOOL EnsureUnityKlasses(void) {
-    if (gCameraKlass != NULL && gComponentKlass != NULL && gTransformKlass != NULL) return YES;
-    if (!ResolveIl2Cpp()) return NO;
-    Il2CppDomain *domain = gIl2CppDomainGet();
-    if (domain == NULL) return NO;
-    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
-    size_t assemblyCount = 0;
-    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
-    for (size_t index = 0; index < assemblyCount; index++) {
-        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
-        if (gCameraKlass == NULL) gCameraKlass = gIl2CppClassFromName(image, "UnityEngine", "Camera");
-        if (gComponentKlass == NULL) gComponentKlass = gIl2CppClassFromName(image, "UnityEngine", "Component");
-        if (gTransformKlass == NULL) gTransformKlass = gIl2CppClassFromName(image, "UnityEngine", "Transform");
-    }
-    return gCameraKlass != NULL && gComponentKlass != NULL && gTransformKlass != NULL;
-}
-/*遍历程序集找三个unity基类并缓存 */
-
-static Il2CppObject *GetMainCameraObject(void) {
-    if (!EnsureUnityKlasses() || gIl2CppClassGetMethodFromName == NULL) return NULL;
-    const MethodInfo *getMain = gIl2CppClassGetMethodFromName(gCameraKlass, "get_main", 0);
-    if (getMain == NULL) return NULL;
-    Il2CppObject *exception = NULL;
-    Il2CppObject *camera = gIl2CppRuntimeInvoke(getMain, NULL, NULL, &exception);
-    if (exception != NULL || camera == NULL) return NULL;
-    return camera;
-}
-/*camera.get_main拿主相机 */
-
-static BOOL GetObjectWorldPosition(Il2CppObject *component, float *outX, float *outY, float *outZ) {
-    if (component == NULL || gIl2CppObjectUnbox == NULL) return NO;
-    const MethodInfo *getTransform = gIl2CppClassGetMethodFromName(gComponentKlass, "get_transform", 0);
-    const MethodInfo *getPosition = gIl2CppClassGetMethodFromName(gTransformKlass, "get_position", 0);
-    if (getTransform == NULL || getPosition == NULL) return NO;
-    Il2CppObject *exception = NULL;
-    Il2CppObject *transform = gIl2CppRuntimeInvoke(getTransform, component, NULL, &exception);
-    if (exception != NULL || transform == NULL) return NO;
-    exception = NULL;
-    Il2CppObject *posObj = gIl2CppRuntimeInvoke(getPosition, transform, NULL, &exception);
-    if (exception != NULL || posObj == NULL) return NO;
-    float *pos = (float *)gIl2CppObjectUnbox(posObj);
-    if (outX) *outX = pos[0];
-    if (outY) *outY = pos[1];
-    if (outZ) *outZ = pos[2];
-    return YES;
-}
-/*component.get_transform transform.get_position unbox出vector3 */
-
-static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float wz, float *outX, float *outY, float *outZ) {
-    if (camera == NULL || gIl2CppObjectUnbox == NULL) return NO;
-    const MethodInfo *worldToScreen = gIl2CppClassGetMethodFromName(gCameraKlass, "WorldToScreenPoint", 1);
-    if (worldToScreen == NULL) return NO;
-    struct { float x, y, z; } world = { wx, wy, wz };
-    void *arguments[] = { &world };
-    Il2CppObject *exception = NULL;
-    Il2CppObject *screenObj = gIl2CppRuntimeInvoke(worldToScreen, camera, arguments, &exception);
-    if (exception != NULL || screenObj == NULL) return NO;
-    float *screen = (float *)gIl2CppObjectUnbox(screenObj);
-    if (outX) *outX = screen[0];
-    if (outY) *outY = screen[1];
-    if (outZ) *outZ = screen[2];
-    return YES;
-}
-/*camera.worldtoscreenpoint投影世界坐标到屏幕 */
-
-static void *FindClassInAllAssemblies(const char *namespaceName, const char *className) {
-    if (!ResolveIl2Cpp()) return NULL;
-    Il2CppDomain *domain = gIl2CppDomainGet();
-    if (domain == NULL) return NULL;
-    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
-    size_t count = 0;
-    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &count);
-    for (size_t i = 0; i < count; i++) {
-        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[i]);
-        void *klass = gIl2CppClassFromName(image, namespaceName, className);
-        if (klass != NULL) return klass;
-    }
-    return NULL;
-}
-/*跨程序集找类 含热更dll(qqpd.modules.scene等) */
+/*统一扫描:findobjectsoftypeall含隐藏对象开关 type对象gchandle缓存*/
 
 static Il2CppArray *ScanObjectsOfTypeInNamespace(const char *namespaceName, const char *className, BOOL includeInactive) {
-    if (!ResolveIl2Cpp()) return NULL;
+    if (!EnsureIl2CppThread()) return NULL;
     void *targetKlass = FindClassInAllAssemblies(namespaceName, className);
     if (targetKlass == NULL) return NULL;
-    const MethodInfo *findMethod = NULL;
-    if (includeInactive) {
-        void *resourcesKlass = FindClassInAllAssemblies("UnityEngine", "Resources");
-        if (resourcesKlass != NULL) findMethod = gIl2CppClassGetMethodFromName(resourcesKlass, "FindObjectsOfTypeAll", 1);
-        if (findMethod == NULL) {
-            void *objectKlass = FindClassInAllAssemblies("UnityEngine", "Object");
-            if (objectKlass != NULL) findMethod = gIl2CppClassGetMethodFromName(objectKlass, "FindObjectsOfTypeAll", 1);
-        }
-    } else {
-        void *objectKlass = FindClassInAllAssemblies("UnityEngine", "Object");
-        if (objectKlass != NULL) findMethod = gIl2CppClassGetMethodFromName(objectKlass, "FindObjectsOfType", 1);
-    }
-    if (findMethod == NULL) return NULL;
-    Il2CppObject *typeObject = GetTypeObjectForClass(targetKlass);
-    if (typeObject == NULL) return NULL;
-    Il2CppObject *exception = NULL;
-    void *arguments[] = { typeObject };
-    return (Il2CppArray *)gIl2CppRuntimeInvoke(findMethod, NULL, arguments, &exception);
+    return ScanObjectsOfClass(targetKlass, includeInactive);
 }
-/*任意命名空间类型扫描 棺材等热更类用 引用类型参数直接传对象指针 */
+/*任意命名空间类型扫描 棺材(qqpd.modules.scene)等热更类用*/
+
+static void *gTimeKlass;
+static const MethodInfo *gGetTimeScaleMethod;
+static const MethodInfo *gSetTimeScaleMethod;
+static BOOL gTimeScaleSaved;
+static float gOriginalTimeScale = 1.0f;
+/*time类缓存+原始timescale保存(照原版0x17e5c先get缓存原值再set 关时还原)*/
+
+static void ApplyTimeScale(float multiplier) {
+    if (!EnsureIl2CppThread()) return;
+    if (gTimeKlass == NULL) {
+        gTimeKlass = FindClassInAllAssemblies("UnityEngine", "Time");
+        if (gTimeKlass == NULL) return;
+    }
+    if (gGetTimeScaleMethod == NULL) gGetTimeScaleMethod = gIl2CppClassGetMethodFromName(gTimeKlass, "get_timeScale", 0);
+    if (gSetTimeScaleMethod == NULL) gSetTimeScaleMethod = gIl2CppClassGetMethodFromName(gTimeKlass, "set_timeScale", 1);
+    if (gSetTimeScaleMethod == NULL) return;
+
+    float value = (float)MAX(0.0, MIN(5.0, multiplier));
+    Il2CppObject *exception = NULL;
+    if (value == 1.0f) {
+        if (gTimeScaleSaved) {
+            void *restoreArgs[] = { &gOriginalTimeScale };
+            gIl2CppRuntimeInvoke(gSetTimeScaleMethod, NULL, restoreArgs, &exception);
+            gTimeScaleSaved = NO;
+        }
+        return;
+    }
+    if (!gTimeScaleSaved && gGetTimeScaleMethod != NULL && gIl2CppObjectUnbox != NULL) {
+        exception = NULL;
+        Il2CppObject *current = gIl2CppRuntimeInvoke(gGetTimeScaleMethod, NULL, NULL, &exception);
+        if (exception == NULL && current != NULL) {
+            gOriginalTimeScale = *((float *)gIl2CppObjectUnbox(current));
+            gTimeScaleSaved = YES;
+        }
+    }
+    void *arguments[] = { &value };
+    exception = NULL;
+    gIl2CppRuntimeInvoke(gSetTimeScaleMethod, NULL, arguments, &exception);
+}
+/*time.set_timescale 首次修改前保存原值 倍率回1.0时还原原值 照原版逻辑*/
+
+static void *gRenderSettingsKlass;
+static const MethodInfo *gSetFogMethod;
+static const MethodInfo *gSetFogDensityMethod;
+static const MethodInfo *gGetFogMethod;
+static const MethodInfo *gGetFogDensityMethod;
+static BOOL gFogSaved;
+static BOOL gOriginalFog;
+static float gOriginalFogDensity = 0.01f;
+/*rendersettings缓存+原始雾效保存还原*/
 
 static BOOL ApplyFogRemoval(BOOL remove) {
-    void *klass = FindClassInAllAssemblies("UnityEngine", "RenderSettings");
-    if (klass == NULL || gIl2CppClassGetMethodFromName == NULL) return NO;
-    const MethodInfo *setFog = gIl2CppClassGetMethodFromName(klass, "set_fog", 1);
-    const MethodInfo *setDensity = gIl2CppClassGetMethodFromName(klass, "set_fogDensity", 1);
-    if (setFog == NULL) return NO;
-    BOOL fog = remove ? NO : YES;
+    if (!EnsureIl2CppThread()) return NO;
+    if (gRenderSettingsKlass == NULL) {
+        gRenderSettingsKlass = FindClassInAllAssemblies("UnityEngine", "RenderSettings");
+        if (gRenderSettingsKlass == NULL) return NO;
+    }
+    if (gSetFogMethod == NULL) gSetFogMethod = gIl2CppClassGetMethodFromName(gRenderSettingsKlass, "set_fog", 1);
+    if (gSetFogDensityMethod == NULL) gSetFogDensityMethod = gIl2CppClassGetMethodFromName(gRenderSettingsKlass, "set_fogDensity", 1);
+    if (gGetFogMethod == NULL) gGetFogMethod = gIl2CppClassGetMethodFromName(gRenderSettingsKlass, "get_fog", 0);
+    if (gGetFogDensityMethod == NULL) gGetFogDensityMethod = gIl2CppClassGetMethodFromName(gRenderSettingsKlass, "get_fogDensity", 0);
+    if (gSetFogMethod == NULL) return NO;
+
+    if (remove && !gFogSaved && gGetFogMethod != NULL && gGetFogDensityMethod != NULL && gIl2CppObjectUnbox != NULL) {
+        Il2CppObject *exception = NULL;
+        Il2CppObject *fogObj = gIl2CppRuntimeInvoke(gGetFogMethod, NULL, NULL, &exception);
+        if (exception == NULL && fogObj != NULL) {
+            gOriginalFog = *((BOOL *)gIl2CppObjectUnbox(fogObj));
+        }
+        exception = NULL;
+        Il2CppObject *densityObj = gIl2CppRuntimeInvoke(gGetFogDensityMethod, NULL, NULL, &exception);
+        if (exception == NULL && densityObj != NULL) {
+            gOriginalFogDensity = *((float *)gIl2CppObjectUnbox(densityObj));
+        }
+        gFogSaved = YES;
+    }
+
+    BOOL fog = remove ? NO : (gFogSaved ? gOriginalFog : YES);
+    float density = remove ? 0.0f : gOriginalFogDensity;
     void *fogArgs[] = { &fog };
     Il2CppObject *exception = NULL;
-    gIl2CppRuntimeInvoke(setFog, NULL, fogArgs, &exception);
-    if (setDensity != NULL) {
-        float density = remove ? 0.0f : 0.01f;
+    gIl2CppRuntimeInvoke(gSetFogMethod, NULL, fogArgs, &exception);
+    if (gSetFogDensityMethod != NULL) {
         void *densityArgs[] = { &density };
         exception = NULL;
-        gIl2CppRuntimeInvoke(setDensity, NULL, densityArgs, &exception);
+        gIl2CppRuntimeInvoke(gSetFogDensityMethod, NULL, densityArgs, &exception);
     }
     return exception == NULL;
 }
-/*rendersettings.set_fog(false)+set_fogdensity(0)去雾 dump.cs:516027/516057 恢复时fog(true)+density(0.01) */
+/*去雾:首次保存原fog/density 开=set_fog(false)+density(0) 关=还原原值 dump.cs:516027/516057*/
+
+static void *gLightKlass;
+static void *gLightTypeHandleKlass;
+static const MethodInfo *gSetIntensityMethod;
+/*light缓存+type缓存标记(用klass指针做key type对象存gchandle)*/
 
 static NSUInteger ApplyHighlight(BOOL on, float brightness) {
-    void *lightKlass = FindClassInAllAssemblies("UnityEngine", "Light");
-    if (lightKlass == NULL || gIl2CppClassGetMethodFromName == NULL) return 0;
-    const MethodInfo *setIntensity = gIl2CppClassGetMethodFromName(lightKlass, "set_intensity", 1);
-    if (setIntensity == NULL) return 0;
-    Il2CppArray *lights = ScanObjectsOfTypeInNamespace("UnityEngine", "Light", YES);
+    if (!EnsureIl2CppThread()) return 0;
+    if (gLightKlass == NULL) {
+        gLightKlass = FindClassInAllAssemblies("UnityEngine", "Light");
+        if (gLightKlass == NULL) return 0;
+    }
+    if (gSetIntensityMethod == NULL) {
+        gSetIntensityMethod = gIl2CppClassGetMethodFromName(gLightKlass, "set_intensity", 1);
+        if (gSetIntensityMethod == NULL) return 0;
+    }
+    Il2CppArray *lights = ScanObjectsOfClass(gLightKlass, YES);
     if (lights == NULL) return 0;
     float value = on ? brightness : 1.0f;
     void *arguments[] = { &value };
@@ -463,20 +500,34 @@ static NSUInteger ApplyHighlight(BOOL on, float brightness) {
         Il2CppObject *light = lights->objects[index];
         if (light == NULL) continue;
         exception = NULL;
-        gIl2CppRuntimeInvoke(setIntensity, light, arguments, &exception);
+        gIl2CppRuntimeInvoke(gSetIntensityMethod, light, arguments, &exception);
         if (exception == NULL) touched++;
     }
     return touched;
 }
-/*light.set_intensity全场景灯亮度 高亮dump.cs 光照增强 关时恢复1.0 */
+/*light.set_intensity全场景灯亮度 高亮增强 关时恢复1.0*/
+
+static void *gComponentKlass;
+static void *gGameObjectKlass;
+static const MethodInfo *gGetGameObjectMethod;
+static const MethodInfo *gSetActiveMethod;
+/*component/gameobject缓存*/
+
+static BOOL EnsureGameObjectApi(void) {
+    if (gComponentKlass != NULL && gGameObjectKlass != NULL &&
+        gGetGameObjectMethod != NULL && gSetActiveMethod != NULL) return YES;
+    if (!EnsureIl2CppThread()) return NO;
+    if (gComponentKlass == NULL) gComponentKlass = FindClassInAllAssemblies("UnityEngine", "Component");
+    if (gGameObjectKlass == NULL) gGameObjectKlass = FindClassInAllAssemblies("UnityEngine", "GameObject");
+    if (gComponentKlass == NULL || gGameObjectKlass == NULL) return NO;
+    if (gGetGameObjectMethod == NULL) gGetGameObjectMethod = gIl2CppClassGetMethodFromName(gComponentKlass, "get_gameObject", 0);
+    if (gSetActiveMethod == NULL) gSetActiveMethod = gIl2CppClassGetMethodFromName(gGameObjectKlass, "SetActive", 1);
+    return gGetGameObjectMethod != NULL && gSetActiveMethod != NULL;
+}
+/*gameobject.setactive api缓存*/
 
 static NSUInteger ApplyCoffinReveal(BOOL reveal) {
-    void *componentKlass = FindClassInAllAssemblies("UnityEngine", "Component");
-    void *gameObjectKlass = FindClassInAllAssemblies("UnityEngine", "GameObject");
-    if (componentKlass == NULL || gameObjectKlass == NULL) return 0;
-    const MethodInfo *getGameObject = gIl2CppClassGetMethodFromName(componentKlass, "get_gameObject", 0);
-    const MethodInfo *setActive = gIl2CppClassGetMethodFromName(gameObjectKlass, "SetActive", 1);
-    if (getGameObject == NULL || setActive == NULL) return 0;
+    if (!EnsureGameObjectApi()) return 0;
     Il2CppArray *coffins = ScanObjectsOfTypeInNamespace("Qqpd.Modules.Scene", "UGCObjectCoffin", YES);
     if (coffins == NULL) return 0;
     BOOL value = reveal ? YES : NO;
@@ -487,42 +538,149 @@ static NSUInteger ApplyCoffinReveal(BOOL reveal) {
         Il2CppObject *coffin = coffins->objects[index];
         if (coffin == NULL) continue;
         exception = NULL;
-        Il2CppObject *gameObject = gIl2CppRuntimeInvoke(getGameObject, coffin, NULL, &exception);
+        Il2CppObject *gameObject = gIl2CppRuntimeInvoke(gGetGameObjectMethod, coffin, NULL, &exception);
         if (exception != NULL || gameObject == NULL) continue;
         exception = NULL;
-        gIl2CppRuntimeInvoke(setActive, gameObject, activeArgs, &exception);
+        gIl2CppRuntimeInvoke(gSetActiveMethod, gameObject, activeArgs, &exception);
         if (exception == NULL) touched++;
     }
     return touched;
 }
-/*扫描热更dll的ugcobjectcoffin gameobject.setactive强制显示棺材透视 */
+/*扫描热更dll(qqpd.modules.scene命名空间已验证)的ugcobjectcoffin findobjectsoftypeall含隐藏 gameobject.setactive强制显示*/
 
-static NSUInteger ApplyDemagnetization(BOOL on) {
-    void *rigidKlass = FindClassInAllAssemblies("UnityEngine", "Rigidbody");
-    if (rigidKlass == NULL || gIl2CppClassGetMethodFromName == NULL) return 0;
-    const MethodInfo *setDrag = gIl2CppClassGetMethodFromName(rigidKlass, "set_drag", 1);
-    const MethodInfo *setAngularDrag = gIl2CppClassGetMethodFromName(rigidKlass, "set_angularDrag", 1);
-    if (setDrag == NULL) return 0;
-    Il2CppArray *bodies = ScanObjectsOfTypeInNamespace("UnityEngine", "Rigidbody", YES);
+static void *gRigidbodyKlass;
+static const MethodInfo *gSetDragMethod;
+static const MethodInfo *gSetAngularDragMethod;
+/*rigidbody缓存*/
+
+static NSUInteger ApplyDemagnetization(float strengthPercent) {
+    if (!EnsureIl2CppThread()) return 0;
+    if (gRigidbodyKlass == NULL) {
+        gRigidbodyKlass = FindClassInAllAssemblies("UnityEngine", "Rigidbody");
+        if (gRigidbodyKlass == NULL) return 0;
+    }
+    if (gSetDragMethod == NULL) {
+        gSetDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "set_drag", 1);
+        gSetAngularDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "set_angularDrag", 1);
+        if (gSetDragMethod == NULL) return 0;
+    }
+    Il2CppArray *bodies = ScanObjectsOfClass(gRigidbodyKlass, YES);
     if (bodies == NULL) return 0;
-    float drag = on ? 0.0f : 1.0f;
+    /* 消磁强度0~100%映射:线性阻力=强度*0.1(0~10) 角阻力=强度*0.05
+       高阻力抵消磁吸/外力牵引 强度0时恢复unity默认drag=0 angulardrag=0.05 */
+    BOOL restore = strengthPercent <= 0.0;
+    float drag = restore ? 0.0f : (float)(strengthPercent * 0.1);
+    float angularDrag = restore ? 0.05f : (float)(strengthPercent * 0.05);
     void *dragArgs[] = { &drag };
+    void *angularArgs[] = { &angularDrag };
     NSUInteger touched = 0;
     Il2CppObject *exception = NULL;
     for (uintptr_t index = 0; index < bodies->maxLength; index++) {
         Il2CppObject *body = bodies->objects[index];
         if (body == NULL) continue;
         exception = NULL;
-        gIl2CppRuntimeInvoke(setDrag, body, dragArgs, &exception);
-        if (setAngularDrag != NULL) {
+        gIl2CppRuntimeInvoke(gSetDragMethod, body, dragArgs, &exception);
+        if (gSetAngularDragMethod != NULL) {
             exception = NULL;
-            gIl2CppRuntimeInvoke(setAngularDrag, body, dragArgs, &exception);
+            gIl2CppRuntimeInvoke(gSetAngularDragMethod, body, angularArgs, &exception);
         }
         if (exception == NULL) touched++;
     }
     return touched;
 }
-/*rigidbody.set_drag/set_angulardrag归零 消磁dump.cs:947119/947125 关时恢复1.0 */
+/*rigidbody.set_drag/set_angulardrag 消磁强度按百分比线性映射 关时恢复unity默认值*/
+
+static void *gLineRendererKlass;
+static void *gRendererKlass;
+static const MethodInfo *gSetEnabledMethod;
+/*linerenderer/renderer缓存*/
+
+static NSUInteger SetAllLineRenderersVisible(BOOL visible, BOOL includeInactive) {
+    if (!EnsureIl2CppThread()) return 0;
+    if (gLineRendererKlass == NULL || gRendererKlass == NULL) {
+        gLineRendererKlass = FindClassInAllAssemblies("UnityEngine", "LineRenderer");
+        gRendererKlass = FindClassInAllAssemblies("UnityEngine", "Renderer");
+        if (gLineRendererKlass == NULL || gRendererKlass == NULL) return 0;
+    }
+    if (gSetEnabledMethod == NULL) {
+        gSetEnabledMethod = gIl2CppClassGetMethodFromName(gRendererKlass, "set_enabled", 1);
+        if (gSetEnabledMethod == NULL) return 0;
+    }
+    Il2CppArray *result = ScanObjectsOfClass(gLineRendererKlass, includeInactive);
+    if (result == NULL) return 0;
+    BOOL value = visible ? YES : NO;
+    void *enableArgs[] = { &value };
+    NSUInteger touched = 0;
+    Il2CppObject *exception = NULL;
+    for (uintptr_t index = 0; index < result->maxLength; index++) {
+        Il2CppObject *lineRenderer = result->objects[index];
+        if (lineRenderer == NULL) continue;
+        exception = NULL;
+        gIl2CppRuntimeInvoke(gSetEnabledMethod, lineRenderer, enableArgs, &exception);
+        if (exception == NULL) touched++;
+    }
+    return touched;
+}
+/*扫描全部linerenderer(含隐藏) renderer.set_enabled切显隐 岛屿路线显示*/
+
+static void *gTransformKlass;
+static const MethodInfo *gGetTransformMethod;
+static const MethodInfo *gGetPositionMethod;
+/*transform缓存*/
+
+static BOOL EnsureTransformApi(void) {
+    if (gTransformKlass != NULL && gGetTransformMethod != NULL && gGetPositionMethod != NULL) return YES;
+    if (!EnsureIl2CppThread()) return NO;
+    if (gComponentKlass == NULL) gComponentKlass = FindClassInAllAssemblies("UnityEngine", "Component");
+    if (gTransformKlass == NULL) gTransformKlass = FindClassInAllAssemblies("UnityEngine", "Transform");
+    if (gComponentKlass == NULL || gTransformKlass == NULL) return NO;
+    if (gGetTransformMethod == NULL) gGetTransformMethod = gIl2CppClassGetMethodFromName(gComponentKlass, "get_transform", 0);
+    if (gGetPositionMethod == NULL) gGetPositionMethod = gIl2CppClassGetMethodFromName(gTransformKlass, "get_position", 0);
+    return gGetTransformMethod != NULL && gGetPositionMethod != NULL;
+}
+/*坐标api缓存*/
+
+static Il2CppObject *GetMainCameraObject(void) {
+    if (!EnsureCameraApi() || gGetMainMethod == NULL) return NULL;
+    Il2CppObject *exception = NULL;
+    Il2CppObject *camera = gIl2CppRuntimeInvoke(gGetMainMethod, NULL, NULL, &exception);
+    if (exception != NULL || camera == NULL) return NULL;
+    return camera;
+}
+/*camera.get_main拿主相机*/
+
+static BOOL GetObjectWorldPosition(Il2CppObject *component, float *outX, float *outY, float *outZ) {
+    if (component == NULL || !EnsureTransformApi() || gIl2CppObjectUnbox == NULL) return NO;
+    Il2CppObject *exception = NULL;
+    Il2CppObject *transform = gIl2CppRuntimeInvoke(gGetTransformMethod, component, NULL, &exception);
+    if (exception != NULL || transform == NULL) return NO;
+    exception = NULL;
+    Il2CppObject *posObj = gIl2CppRuntimeInvoke(gGetPositionMethod, transform, NULL, &exception);
+    if (exception != NULL || posObj == NULL) return NO;
+    float *pos = (float *)gIl2CppObjectUnbox(posObj);
+    if (pos == NULL) return NO;
+    if (outX) *outX = pos[0];
+    if (outY) *outY = pos[1];
+    if (outZ) *outZ = pos[2];
+    return YES;
+}
+/*component.get_transform transform.get_position unbox出vector3*/
+
+static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float wz, float *outX, float *outY, float *outZ) {
+    if (camera == NULL || !EnsureCameraApi() || gWorldToScreenMethod == NULL || gIl2CppObjectUnbox == NULL) return NO;
+    struct { float x, y, z; } world = { wx, wy, wz };
+    void *arguments[] = { &world };
+    Il2CppObject *exception = NULL;
+    Il2CppObject *screenObj = gIl2CppRuntimeInvoke(gWorldToScreenMethod, camera, arguments, &exception);
+    if (exception != NULL || screenObj == NULL) return NO;
+    float *screen = (float *)gIl2CppObjectUnbox(screenObj);
+    if (screen == NULL) return NO;
+    if (outX) *outX = screen[0];
+    if (outY) *outY = screen[1];
+    if (outZ) *outZ = screen[2];
+    return YES;
+}
+/*camera.worldtoscreenpoint投影世界坐标到屏幕 棺材esp标记用*/
 
 @interface RussOverlayController : NSObject
 @property(nonatomic, strong) UIView *mainPanel;
@@ -531,6 +689,8 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
 @property(nonatomic, strong) UIView *welcomePanel;
 @property(nonatomic, strong) UITextField *cardField;
 @property(nonatomic, strong) UILabel *welcomeHint;
+@property(nonatomic, strong) UILabel *engineStatus;
+@property(nonatomic, assign) NSInteger engineStatusState;
 @property(nonatomic, assign) BOOL verificationPassed;
 @property(nonatomic, assign) BOOL panelVisible;
 @property(nonatomic, strong) NSMutableDictionary *featureStates;
@@ -542,15 +702,18 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
 @property(nonatomic, strong) CADisplayLink *coffinDisplayLink;
 @property(nonatomic, strong) UIView *coffinOverlay;
 @property(nonatomic, strong) NSMutableArray *coffinMarkers;
+@property(nonatomic, assign) NSUInteger markerFrameTick;
+@property(nonatomic, assign) uint32_t coffinArrayHandle;
+@property(nonatomic, assign) Il2CppArray *coffinArrayRaw;
 @property(nonatomic, strong) CADisplayLink *runtimeDisplayLink;
 @property(nonatomic, assign) NSUInteger runtimeFrameTick;
 @end
-/*照原版menuview结构 mainpanel featurestates 4滑块值 验证passed 面板visible 棺材标记overlay*/
+/*照原版menuview结构 mainpanel featurestates 4滑块值 验证passed 面板visible 棺材标记overlay+gchandle数组 引擎状态标签*/
+
 @implementation RussOverlayController
 
 - (void)install {
     [self loadSettings];
-
 
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = nil;
@@ -580,10 +743,12 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
         [window addSubview:self.floatingButton];
 
         [self buildInterfaceInWindow:window];
+        [self startRuntimeEngine];
         [self restoreFeatureRuntime];
     });
 }
-/*入口 悬浮按钮russ可拖动 点击开面板 构建ui+欢迎页 恢复上次功能状态*/
+/*入口 悬浮按钮russ可拖动 点击开面板 构建ui+欢迎页 引擎常驻(重试连接+状态刷新) 恢复上次功能状态*/
+
 - (void)buildInterfaceInWindow:(UIWindow *)window {
     CGFloat screenHeight = window.bounds.size.height;
     CGFloat scrollHeight = MIN(440.0, screenHeight - 140.0);
@@ -598,11 +763,19 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     [dragBar addGestureRecognizer:panelDrag];
     [self.mainPanel addSubview:dragBar];
 
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 10.0, 220.0, 24.0)];
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 10.0, 150.0, 24.0)];
     title.text = @"Russ公益";
     title.textColor = UIColor.whiteColor;
     title.font = [UIFont boldSystemFontOfSize:18.0];
     [self.mainPanel addSubview:title];
+
+    self.engineStatus = [[UILabel alloc] initWithFrame:CGRectMake(190.0, 13.0, 100.0, 18.0)];
+    self.engineStatus.font = [UIFont boldSystemFontOfSize:11.0];
+    self.engineStatus.textAlignment = NSTextAlignmentRight;
+    self.engineStatus.textColor = [UIColor orangeColor];
+    self.engineStatus.text = @"引擎:连接中";
+    [dragBar addSubview:self.engineStatus];
+    self.engineStatusState = 0;
 
     self.panelScroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0.0, 44.0, 300.0, scrollHeight)];
     self.panelScroll.contentSize = CGSizeMake(300.0, 688.0);
@@ -622,7 +795,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     [window addSubview:self.mainPanel];
     [self buildWelcomeInWindow:window];
 }
-/*主面板 russ公益 标题+44pt拖动条 uiscrollview内9张功能卡片 contentSize688可正常滚动 + 欢迎验证页*/
+/*主面板 russ公益 标题+44pt拖动条+引擎连接状态 右侧滚动区9张功能卡片 + 欢迎验证页*/
 
 - (NSArray *)featureOrder {
     return @[@"highlight", @"coffin", @"fog", @"wide", @"islandRoute",
@@ -635,7 +808,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
         @"highlight": @{@"title": @"高亮", @"icon": @"sun.max.fill", @"desc": @"增强场景光照亮度"},
         @"coffin": @{@"title": @"棺材透视", @"icon": @"shippingbox.fill", @"desc": @"显示所有棺材并标记位置"},
         @"fog": @{@"title": @"去雾", @"icon": @"cloud.fog.fill", @"desc": @"关闭场景雾效"},
-        @"wide": @{@"title": @"广角视角", @"icon": @"viewfinder.circle.fill", @"desc": @"所有相机扩展到120度"},
+        @"wide": @{@"title": @"广角视角", @"icon": @"viewfinder.circle.fill", @"desc": @"视野扩展到66度"},
         @"islandRoute": @{@"title": @"岛屿路线", @"icon": @"map.fill", @"desc": @"显示 LineRenderer 路线"},
         @"firstPersonFOV": @{@"title": @"第一人称 FOV", @"icon": @"person.crop.circle", @"slider": @YES, @"min": @30.0, @"max": @170.0, @"unit": @"°"},
         @"thirdPersonFOV": @{@"title": @"第三人称 FOV", @"icon": @"figure.walking", @"slider": @YES, @"min": @30.0, @"max": @170.0, @"unit": @"°"},
@@ -643,7 +816,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
         @"globalSpeed": @{@"title": @"速度倍率", @"icon": @"hare.fill", @"slider": @YES, @"min": @0.5, @"max": @3.0, @"unit": @"x"}
     };
 }
-/*9张卡片定义 图标照原版sfsymbols 标题/说明/滑块范围 */
+/*9张卡片定义 图标照原版sfsymbols 标题/说明/滑块范围 广角默认66度照原版widefov值*/
 
 - (void)buildFeatureCard:(NSString *)key spec:(NSDictionary *)spec frame:(CGRect)frame {
     UIView *card = [[UIView alloc] initWithFrame:frame];
@@ -815,14 +988,17 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     [self setPanelVisible:YES animated:YES];
 }
 /*进入russ公益 关闭欢迎页 打开主面板 verificationpassed=true照原版 */
+
 - (void)togglePanel {
     [self setPanelVisible:!self.panelVisible animated:YES];
 }
 /*点击悬浮按钮开/关主面板 */
+
 - (void)closePanel {
     [self setPanelVisible:NO animated:YES];
 }
 /*关闭主面板 照原版方法名 */
+
 - (void)setPanelVisible:(BOOL)visible animated:(BOOL)animated {
     self.panelVisible = visible;
     void (^apply)(void) = ^{
@@ -836,6 +1012,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     }
 }
 /*面板显隐动画 照原版setpanelvisible:animated */
+
 - (void)show {
     [self setPanelVisible:YES animated:YES];
 }
@@ -843,6 +1020,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     [self setPanelVisible:NO animated:YES];
 }
 /*show/hide 照原版 */
+
 - (void)handleDrag:(UIPanGestureRecognizer *)gesture {
     UIView *view = gesture.view;
     UIView *container = view.superview;
@@ -865,6 +1043,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     [gesture setTranslation:CGPointMake(0.0, 0.0) inView:container];
 }
 /*手指拖动悬浮按钮 限制中心点不超出安全区域 */
+
 - (void)handlePanelDrag:(UIPanGestureRecognizer *)gesture {
     UIView *view = self.mainPanel;
     UIView *container = view.superview;
@@ -900,17 +1079,18 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     if (key == nil) return;
     NSDictionary *spec = [self cardSpecifications][key];
     self.featureStates[key] = @(sender.value);
-    [self startRuntimeEngine];
     if ([key isEqualToString:@"globalSpeed"]) {
         ApplyTimeScale(sender.value);
     } else if ([key isEqualToString:@"demagnetization"]) {
-        ApplyDemagnetization(YES);
+        if ([self.featureStates[@"demagnetization"] boolValue] || sender.value > 0.0) {
+            ApplyDemagnetization(sender.value);
+        }
     }
     [self updateCardValueLabel:key spec:spec];
     [self saveSettings];
-    [self stopRuntimeEngineIfIdle];
+    [self refreshEngineFrameRate];
 }
-/*滑块回调 存值启动引擎 fov/相机fov由引擎每帧写 速度消磁即时写 照原版featuresliderchanged */
+/*滑块回调 存值 速度消磁即时写 fov由引擎每帧写 照原版featuresliderchanged */
 
 - (void)updateCardValueLabel:(NSString *)key spec:(NSDictionary *)spec {
     NSInteger tag = [self cardTagForKey:key];
@@ -930,7 +1110,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     self.featureStates[key] = @(enabled);
     if (persist) [self saveSettings];
     [self updateCardAppearance:key enabled:enabled];
-    [self startRuntimeEngine];
+    [self refreshEngineFrameRate];
     if (!notify) return;
 
     if ([key isEqualToString:@"highlight"]) {
@@ -949,15 +1129,17 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
         ApplyFogRemoval(enabled);
         [self setCardHint:key text:enabled ? @"雾效已关闭" : @"雾效已恢复"];
     } else if ([key isEqualToString:@"wide"]) {
-        NSUInteger count = enabled ? ApplyFieldOfView(120.0) : ApplyFieldOfView([self sliderValueForKey:@"thirdPersonFOV"]);
+        NSUInteger count = enabled ? ApplyFieldOfView(66.0) : ApplyFieldOfView([self sliderValueForKey:@"thirdPersonFOV"]);
         [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"%lu 个相机已扩展", (unsigned long)count] : @"已恢复默认视角"]];
     } else if ([key isEqualToString:@"islandRoute"]) {
         NSUInteger count = SetAllLineRenderersVisible(enabled, YES);
         [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"已显示 %lu 条路线", (unsigned long)count] : @"已隐藏所有路线"]];
+    } else if ([key isEqualToString:@"demagnetization"]) {
+        NSUInteger count = enabled ? ApplyDemagnetization([self sliderValueForKey:@"demagnetization"]) : ApplyDemagnetization(0.0);
+        [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"已消磁 %lu 个物体", (unsigned long)count] : @"已恢复磁性"]];
     }
-    [self stopRuntimeEngineIfIdle];
 }
-/*功能分发 setfeature后启动持续引擎即时反馈+每帧维持 关时停引擎 */
+/*功能分发 setfeature后即时生效一次 引擎每帧/每0.5s持续维持 广角66度照原版widefov默认值 */
 
 - (void)setCardHint:(NSString *)key text:(NSString *)text {
     NSInteger tag = [self cardTagForKey:key];
@@ -982,13 +1164,25 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     }
 }
 /*卡片激活背景变亮 照原版featurecard.setactive */
+
 - (void)startRuntimeEngine {
     if (self.runtimeDisplayLink != nil) return;
     self.runtimeFrameTick = 0;
     self.runtimeDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(tickRuntime)];
+    [self refreshEngineFrameRate];
     [self.runtimeDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
-/*开启持续生效引擎 照原版displaylink架构 */
+/*引擎常驻启动:连接重试+状态刷新+功能维持 有功能60帧无功能降到10帧省电 */
+
+- (void)refreshEngineFrameRate {
+    if (self.runtimeDisplayLink == nil) return;
+    NSInteger fps = [self anyFeatureActive] ? 60 : 10;
+    if (self.runtimeDisplayLink.preferredFramesPerSecond != fps) {
+        self.runtimeDisplayLink.preferredFramesPerSecond = fps;
+    }
+}
+/*动态帧率:功能激活60fps 维持写入 空闲10fps只做连接重试+状态 */
+
 - (BOOL)anyFeatureActive {
     if ([self.featureStates[@"highlight"] boolValue]) return YES;
     if ([self.featureStates[@"coffin"] boolValue]) return YES;
@@ -1002,36 +1196,53 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     return NO;
 }
 /*判断是否有功能需要持续维持 */
-- (void)stopRuntimeEngineIfIdle {
-    if (self.runtimeDisplayLink != nil && ![self anyFeatureActive]) {
-        [self.runtimeDisplayLink invalidate];
-        self.runtimeDisplayLink = nil;
+
+- (void)updateEngineStatus:(BOOL)connected {
+    NSInteger state = connected ? 1 : 0;
+    if (state == self.engineStatusState) return;
+    self.engineStatusState = state;
+    if (self.engineStatus == nil) return;
+    if (connected) {
+        self.engineStatus.text = @"引擎:已连接";
+        self.engineStatus.textColor = [UIColor colorWithRed:0.30 green:0.85 blue:0.70 alpha:1.0];
+    } else {
+        self.engineStatus.text = @"引擎:连接中";
+        self.engineStatus.textColor = [UIColor orangeColor];
     }
 }
-/*无功能激活时停引擎省电 */
+/*引擎连接状态显示 拖动栏右侧 未连接橙色/已连接绿色 状态变化才刷新避免每帧布局 */
+
 - (void)tickRuntime {
     self.runtimeFrameTick++;
+    BOOL connected = EnsureIl2CppThread();
+    [self updateEngineStatus:connected];
+    if (!connected) return;
+
+    BOOL anyActive = [self anyFeatureActive];
     BOOL heavyTick = (self.runtimeFrameTick % 30 == 0);
+    if (heavyTick) [self refreshEngineFrameRate];
+    if (!anyActive) return;
+
     CGFloat firstFOV = [self sliderValueForKey:@"firstPersonFOV"];
     CGFloat thirdFOV = [self sliderValueForKey:@"thirdPersonFOV"];
     BOOL wide = [self.featureStates[@"wide"] boolValue];
-    CGFloat effectiveFOV = wide ? 120.0 : thirdFOV;
+    CGFloat effectiveFOV = wide ? 66.0 : thirdFOV;
     CGFloat speed = [self sliderValueForKey:@"globalSpeed"];
 
     if ([self.featureStates[@"fog"] boolValue]) ApplyFogRemoval(YES);
     if (speed != 1.0) ApplyTimeScale((float)speed);
-    ApplyCameraFollow((float)thirdFOV, (float)firstFOV);
+    ApplyCameraFollow((float)(wide ? 66.0 : thirdFOV), (float)(wide ? 66.0 : firstFOV));
     if (wide || effectiveFOV != 75.0) ApplyFieldOfView(effectiveFOV);
 
     if (heavyTick) {
         if ([self.featureStates[@"highlight"] boolValue]) ApplyHighlight(YES, 2.5f);
-        if ([self.featureStates[@"demagnetization"] boolValue]) ApplyDemagnetization(YES);
+        if ([self.featureStates[@"demagnetization"] boolValue]) ApplyDemagnetization([self sliderValueForKey:@"demagnetization"]);
         if ([self.featureStates[@"coffin"] boolValue]) ApplyCoffinReveal(YES);
         if ([self.featureStates[@"islandRoute"] boolValue]) SetAllLineRenderersVisible(YES, YES);
     }
-    if (heavyTick) [self stopRuntimeEngineIfIdle];
 }
-/*每帧: fog/timescale/camerafollow字段/相机fov 轻量invoke 每30帧(0.5s): 灯/刚体/棺材/路线扫描 热更程序集加载后自动生效 新场景对象自动覆盖 */
+/*每帧: 引擎连接重试+状态刷新(常驻) fog/timescale/camerafollow字段/相机fov轻量invoke 每30帧(0.5s):灯/刚体/棺材/路线扫描 热更程序集加载后自动生效 新对象自动覆盖 */
+
 - (void)startCoffinMarkers {
     if (self.coffinDisplayLink != nil) return;
     UIWindow *window = self.floatingButton.window;
@@ -1046,10 +1257,11 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
         [self.coffinOverlay addSubview:marker];
     }
     [window addSubview:self.coffinOverlay];
+    self.markerFrameTick = 0;
     self.coffinDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateCoffinMarkers)];
     [self.coffinDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
-/*棺材透视开启 全屏透明overlay+8标记池 cadisplaylink每帧 照原版islandroute的displaylink架构 */
+/*棺材透视开启 全屏透明overlay+8标记池 cadisplaylink每帧 照原版displaylink架构 */
 
 - (void)stopCoffinMarkers {
     [self.coffinDisplayLink invalidate];
@@ -1057,8 +1269,13 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     [self.coffinOverlay removeFromSuperview];
     self.coffinOverlay = nil;
     self.coffinMarkers = nil;
+    if (self.coffinArrayHandle != 0 && gIl2CppGCHandleFree != NULL) {
+        gIl2CppGCHandleFree(self.coffinArrayHandle);
+    }
+    self.coffinArrayHandle = 0;
+    self.coffinArrayRaw = NULL;
 }
-/*棺材透视关闭 停帧移除overlay */
+/*棺材透视关闭 停帧移除overlay 释放数组gchandle */
 
 - (UIView *)buildCoffinMarker {
     UIView *container = [[UIView alloc] initWithFrame:CGRectMake(-100.0, -100.0, 64.0, 38.0)];
@@ -1084,19 +1301,32 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
 
 - (void)updateCoffinMarkers {
     if (self.coffinOverlay == nil || self.coffinMarkers == nil) return;
-    static NSUInteger frameTick = 0;
-    static Il2CppArray *cachedCoffins = NULL;
-    frameTick++;
-    if (frameTick % 30 == 1) {
-        cachedCoffins = ScanObjectsOfTypeInNamespace("Qqpd.Modules.Scene", "UGCObjectCoffin", YES);
+    self.markerFrameTick++;
+    if (self.markerFrameTick % 30 == 1 || self.coffinArrayRaw == NULL) {
+        /* 重扫:先释放旧gchandle再钉住新数组 照原版gchandle_new/free防GC回收 */
+        if (self.coffinArrayHandle != 0) {
+            if (gIl2CppGCHandleFree != NULL) gIl2CppGCHandleFree(self.coffinArrayHandle);
+            self.coffinArrayHandle = 0;
+        }
+        Il2CppArray *scanned = ScanObjectsOfTypeInNamespace("Qqpd.Modules.Scene", "UGCObjectCoffin", YES);
+        self.coffinArrayRaw = scanned;
+        if (scanned != NULL && gIl2CppGCHandleNew != NULL) {
+            self.coffinArrayHandle = gIl2CppGCHandleNew((Il2CppObject *)scanned, NO);
+        }
+    }
+
+    Il2CppArray *coffins = self.coffinArrayRaw;
+    if (self.coffinArrayHandle != 0 && gIl2CppGCHandleGetTarget != NULL) {
+        Il2CppObject *target = gIl2CppGCHandleGetTarget(self.coffinArrayHandle);
+        if (target != NULL) coffins = (Il2CppArray *)target;
     }
     Il2CppObject *camera = GetMainCameraObject();
     if (camera == NULL) return;
-    Il2CppArray *coffins = cachedCoffins;
     float camX = 0.0f, camY = 0.0f, camZ = 0.0f;
     GetObjectWorldPosition(camera, &camX, &camY, &camZ);
     CGFloat screenW = self.coffinOverlay.bounds.size.width;
     CGFloat screenH = self.coffinOverlay.bounds.size.height;
+
     NSUInteger shown = 0;
     for (NSUInteger i = 0; i < self.coffinMarkers.count; i++) {
         UIView *marker = self.coffinMarkers[i];
@@ -1118,11 +1348,11 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
         shown++;
     }
 }
-/*每帧 扫描ugcobjectcoffin 取前8个 worldtoscreen投影 橙框+距离文字 镜头后或出屏隐藏 */
+/*每0.5s扫描ugcobjectcoffin(数组gchandle钉住) 每帧取坐标 worldtoscreen投影 橙框+距离文字 镜头后或出屏隐藏 */
 
 - (void)restoreFeatureRuntime {
     if ([self anyFeatureActive]) {
-        [self startRuntimeEngine];
+        [self refreshEngineFrameRate];
     }
     if ([self.featureStates[@"coffin"] boolValue]) {
         [self startCoffinMarkers];
@@ -1130,7 +1360,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     ApplyCameraFollow([self sliderValueForKey:@"thirdPersonFOV"], [self sliderValueForKey:@"firstPersonFOV"]);
     ApplyTimeScale([self sliderValueForKey:@"globalSpeed"]);
 }
-/*启动恢复 有功能开着→引擎接管持续生效(热更程序集加载后自动补上) 照原版restorefeatureruntime */
+/*启动恢复 有功能开着引擎60帧维持(热更程序集加载后自动补上) 照原版restorefeatureruntime */
 
 - (void)loadSettings {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
@@ -1144,6 +1374,7 @@ static NSUInteger ApplyDemagnetization(BOOL on) {
     self.thirdPersonFOV = [self sliderValueForKey:@"thirdPersonFOV"];
     self.demagnetizationStrength = [self sliderValueForKey:@"demagnetization"];
     self.globalSpeedMultiplier = [self sliderValueForKey:@"globalSpeed"];
+    self.highlightBrightness = 2.5;
     self.verificationPassed = [defaults boolForKey:@"RussPublic.ThomeAuth.SavedCard.v1"];
 }
 /*读配置 key照原版russpublic.menu.configuration.v1 字典结构 featurestates一次存全部 */
