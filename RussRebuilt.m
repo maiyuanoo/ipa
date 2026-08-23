@@ -21,6 +21,13 @@ typedef struct Il2CppArray {
     uintptr_t maxLength;
     Il2CppObject *objects[];
 } Il2CppArray;
+typedef struct UnityColor {
+    float r;
+    float g;
+    float b;
+    float a;
+} UnityColor;
+/*UnityEngine.Color 为四个连续 float；原版通过 Graphic.get_color/set_color 读写完整16字节*/
 /* il2cpp基础前向声明 数组结构体(头16字节klass+monitor bounds 8 max_length 8 数据从32开始)*/
 
 typedef Il2CppDomain *(*Il2CppDomainGet)(void);
@@ -597,27 +604,158 @@ static BOOL EnsureGameObjectApi(void) {
 }
 /*gameobject.setactive api缓存*/
 
-static NSUInteger ApplyCoffinReveal(BOOL reveal) {
-    if (!EnsureGameObjectApi()) return 0;
-    Il2CppArray *coffins = ScanObjectsOfTypeInNamespace("Qqpd.Modules.Scene", "UGCObjectCoffin", YES);
-    if (coffins == NULL) return 0;
-    BOOL value = reveal ? YES : NO;
-    void *activeArgs[] = { &value };
-    NSUInteger touched = 0;
+enum { kRussCoffinColorCacheMax = 512 };
+typedef struct RussCoffinColorCacheEntry {
+    uint32_t handle;
+    UnityColor originalColor;
+} RussCoffinColorCacheEntry;
+/*原版以 gchandle 保存被修改的 Image；关闭功能时只恢复这些对象，避免影响无关 UI*/
+
+static void *gCoffinSourceKlass;
+static void *gCoffinPageKlass;
+static void *gCoffinEntryKlass;
+static void *gImageKlass;
+static void *gGraphicKlass;
+static const MethodInfo *gCoffinGetPageMethod;
+static const MethodInfo *gCoffinGetEntryMethod;
+static const MethodInfo *gGraphicGetColorMethod;
+static const MethodInfo *gGraphicSetColorMethod;
+static void *gCoffinEntryListField;
+static uint32_t gCoffinPage = 1;
+static RussCoffinColorCacheEntry gCoffinColorCache[kRussCoffinColorCacheMax];
+/*Russ 0x17720：EAKGFFFBKDG.DCODHFKCBGO → GAKFOICFFGF.DGFGHBCDENH →
+  JJKENHNKEJP.IDBNHPMAGCN；只处理该链产生的 Image，不扫描全局 Graphic*/
+
+static BOOL IsFiniteUnityColor(const UnityColor *color) {
+    if (color == NULL) return NO;
+    return isfinite(color->r) && isfinite(color->g) && isfinite(color->b) && isfinite(color->a) &&
+           color->a >= 0.0f && color->a <= 1.0f;
+}
+
+static NSInteger FindCoffinColorCacheEntry(Il2CppObject *graphic) {
+    if (graphic == NULL || gIl2CppGCHandleGetTarget == NULL) return NSNotFound;
+    for (NSInteger index = 0; index < kRussCoffinColorCacheMax; index++) {
+        if (gCoffinColorCache[index].handle == 0) continue;
+        if (gIl2CppGCHandleGetTarget(gCoffinColorCache[index].handle) == graphic) return index;
+    }
+    return NSNotFound;
+}
+
+static NSUInteger RestoreCoffinGraphicColors(void) {
+    if (gGraphicSetColorMethod == NULL || gIl2CppGCHandleGetTarget == NULL) return 0;
+    NSUInteger restored = 0;
+    for (NSInteger index = 0; index < kRussCoffinColorCacheMax; index++) {
+        RussCoffinColorCacheEntry *entry = &gCoffinColorCache[index];
+        if (entry->handle == 0) continue;
+        Il2CppObject *graphic = gIl2CppGCHandleGetTarget(entry->handle);
+        if (graphic != NULL && ValidateInstanceOfClass(graphic, gImageKlass)) {
+            void *arguments[] = { &entry->originalColor };
+            Il2CppObject *exception = NULL;
+            gIl2CppRuntimeInvoke(gGraphicSetColorMethod, graphic, arguments, &exception);
+            if (exception == NULL) restored++;
+        }
+        if (gIl2CppGCHandleFree != NULL) gIl2CppGCHandleFree(entry->handle);
+        entry->handle = 0;
+    }
+    return restored;
+}
+
+static BOOL CacheAndClearCoffinGraphic(Il2CppObject *graphic) {
+    if (graphic == NULL || !ValidateInstanceOfClass(graphic, gImageKlass) ||
+        gGraphicGetColorMethod == NULL || gGraphicSetColorMethod == NULL ||
+        gIl2CppObjectUnbox == NULL || gIl2CppGCHandleNew == NULL) return NO;
+
+    NSInteger slot = FindCoffinColorCacheEntry(graphic);
+    if (slot == NSNotFound) {
+        for (NSInteger index = 0; index < kRussCoffinColorCacheMax; index++) {
+            if (gCoffinColorCache[index].handle == 0) {
+                slot = index;
+                break;
+            }
+        }
+        if (slot == NSNotFound) return NO;
+
+        Il2CppObject *exception = NULL;
+        Il2CppObject *boxedColor = gIl2CppRuntimeInvoke(gGraphicGetColorMethod, graphic, NULL, &exception);
+        if (exception != NULL || boxedColor == NULL) return NO;
+        UnityColor *original = (UnityColor *)gIl2CppObjectUnbox(boxedColor);
+        if (!IsFiniteUnityColor(original)) return NO;
+
+        uint32_t handle = gIl2CppGCHandleNew(graphic, NO);
+        if (handle == 0) return NO;
+        gCoffinColorCache[slot].handle = handle;
+        gCoffinColorCache[slot].originalColor = *original;
+    }
+
+    UnityColor clearedColor = gCoffinColorCache[slot].originalColor;
+    clearedColor.a = 0.0f;/*原版收敛后按 originalAlpha * (1 - 1) 写透明*/
+    void *arguments[] = { &clearedColor };
     Il2CppObject *exception = NULL;
-    for (uintptr_t index = 0; index < coffins->maxLength; index++) {
-        Il2CppObject *coffin = coffins->objects[index];
-        if (coffin == NULL) continue;
-        exception = NULL;
-        Il2CppObject *gameObject = gIl2CppRuntimeInvoke(gGetGameObjectMethod, coffin, NULL, &exception);
-        if (exception != NULL || gameObject == NULL) continue;
-        exception = NULL;
-        gIl2CppRuntimeInvoke(gSetActiveMethod, gameObject, activeArgs, &exception);
-        if (exception == NULL) touched++;
+    gIl2CppRuntimeInvoke(gGraphicSetColorMethod, graphic, arguments, &exception);
+    return exception == NULL;
+}
+
+static NSUInteger ApplyCoffinEntryList(Il2CppObject *listObject) {
+    if (listObject == NULL) return 0;
+
+    /*原版 0x18 读取 List._items + _size，随后按数组0x20、条目0x18读取；
+      每条仅在 state >= 0 且对象确为 UnityEngine.UI.Image 时修改。*/
+    uintptr_t itemsAddress = 0;
+    int32_t count = 0;
+    if (!ReadProcessMemory((uintptr_t)listObject + 0x18, &itemsAddress, sizeof(itemsAddress)) ||
+        !ReadProcessMemory((uintptr_t)listObject + 0x20, &count, sizeof(count)) ||
+        itemsAddress < 0x10000 || count <= 0 || count > 4096) return 0;
+
+    uintptr_t maxLength = 0;
+    if (!ReadProcessMemory(itemsAddress + 0x18, &maxLength, sizeof(maxLength)) || maxLength == 0 || maxLength > 8192) return 0;
+    NSUInteger limit = (NSUInteger)MIN((uint64_t)count, (uint64_t)maxLength);
+    NSUInteger touched = 0;
+    for (NSUInteger index = 0; index < limit; index++) {
+        uintptr_t entryAddress = itemsAddress + 0x20 + index * 0x18;
+        int32_t state = -1;
+        Il2CppObject *graphic = NULL;
+        if (!ReadProcessMemory(entryAddress, &state, sizeof(state)) || state < 0 ||
+            !ReadProcessMemory(entryAddress + 0x10, &graphic, sizeof(graphic))) continue;
+        if (CacheAndClearCoffinGraphic(graphic)) touched++;
     }
     return touched;
 }
-/*扫描热更dll(qqpd.modules.scene命名空间已验证)的ugcobjectcoffin findobjectsoftypeall含隐藏 gameobject.setactive强制显示*/
+
+static NSUInteger ApplyCoffinReveal(BOOL reveal) {
+    if (!reveal) return RestoreCoffinGraphicColors();
+    if (!EnsureIl2CppThread() || gIl2CppFieldGetValue == NULL) return 0;
+    if (gCoffinSourceKlass == NULL) gCoffinSourceKlass = FindClassInAllAssemblies("", "EAKGFFFBKDG");
+    if (gCoffinPageKlass == NULL) gCoffinPageKlass = FindClassInAllAssemblies("", "GAKFOICFFGF");
+    if (gCoffinEntryKlass == NULL) gCoffinEntryKlass = FindClassInAllAssemblies("", "JJKENHNKEJP");
+    if (gImageKlass == NULL) gImageKlass = FindClassInAllAssemblies("UnityEngine.UI", "Image");
+    if (gGraphicKlass == NULL) gGraphicKlass = FindClassInAllAssemblies("UnityEngine.UI", "Graphic");
+    if (gCoffinSourceKlass == NULL || gCoffinPageKlass == NULL || gCoffinEntryKlass == NULL ||
+        gImageKlass == NULL || gGraphicKlass == NULL) return 0;
+
+    if (gCoffinGetPageMethod == NULL) gCoffinGetPageMethod = gIl2CppClassGetMethodFromName(gCoffinSourceKlass, "DCODHFKCBGO", 0);
+    if (gCoffinGetEntryMethod == NULL) gCoffinGetEntryMethod = gIl2CppClassGetMethodFromName(gCoffinPageKlass, "DGFGHBCDENH", 1);
+    if (gCoffinEntryListField == NULL) gCoffinEntryListField = gIl2CppClassGetFieldFromName(gCoffinEntryKlass, "IDBNHPMAGCN");
+    if (gGraphicGetColorMethod == NULL) gGraphicGetColorMethod = gIl2CppClassGetMethodFromName(gGraphicKlass, "get_color", 0);
+    if (gGraphicSetColorMethod == NULL) gGraphicSetColorMethod = gIl2CppClassGetMethodFromName(gGraphicKlass, "set_color", 1);
+    if (gCoffinGetPageMethod == NULL || gCoffinGetEntryMethod == NULL || gCoffinEntryListField == NULL ||
+        gGraphicGetColorMethod == NULL || gGraphicSetColorMethod == NULL) return 0;
+
+    Il2CppObject *exception = NULL;
+    Il2CppObject *pageSource = gIl2CppRuntimeInvoke(gCoffinGetPageMethod, NULL, NULL, &exception);
+    if (exception != NULL || !ValidateInstanceOfClass(pageSource, gCoffinPageKlass)) return 0;
+
+    int32_t page = (int32_t)gCoffinPage;
+    void *arguments[] = { &page };
+    exception = NULL;
+    Il2CppObject *entry = gIl2CppRuntimeInvoke(gCoffinGetEntryMethod, pageSource, arguments, &exception);
+    gCoffinPage = gCoffinPage >= 4 ? 1 : gCoffinPage + 1;/*原版按 1~4 分批拉取，避免一帧集中修改*/
+    if (exception != NULL || !ValidateInstanceOfClass(entry, gCoffinEntryKlass)) return 0;
+
+    Il2CppObject *listObject = NULL;
+    gIl2CppFieldGetValue(entry, gCoffinEntryListField, &listObject);
+    return ApplyCoffinEntryList(listObject);
+}
+/*Russ 原版显棺：混淆对象链定位目标 Image，缓存原 Color 后仅清 alpha；关闭时精确恢复*/
 
 static void *gRigidbodyKlass;
 static const MethodInfo *gSetDragMethod;
