@@ -1,55 +1,59 @@
-openjdk version "21.0.11" 2026-04-21 LTS
-OpenJDK Runtime Environment Temurin-21.0.11+10 (build 21.0.11+10-LTS)
-OpenJDK 64-Bit Server VM Temurin-21.0.11+10 (build 21.0.11+10-LTS, mixed mode)
-INFO  Using log config file: jar:file:/Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
-INFO  Using log file: /Users/runner/Library/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
-INFO  Loading user preferences: /Users/runner/Library/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
+openjdk version "25.0.4" 2026-07-21 LTS
+OpenJDK Runtime Environment Temurin-25.0.4+7 (build 25.0.4+7-LTS)
+OpenJDK 64-Bit Server VM Temurin-25.0.4+7 (build 25.0.4+7-LTS, mixed mode)
+INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (493 ms) (ClassSearcher)  
+INFO  Class search complete (1092 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
 INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
 INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
-INFO  Headless startup complete (7541 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (5942 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
+WARNING: Please consider reporting this to the maintainers of class org.apache.felix.framework.util.SecureAction
+WARNING: sun.misc.Unsafe::staticFieldOffset will be removed in a future release
 INFO  HEADLESS Script Paths:
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
-    /Users/runner/work/ipa/ipa/tools/ghidra
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SwiftDemangler/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts (HeadlessAnalyzer)  
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /home/runner/work/ipa/ipa/tools/ghidra
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts (HeadlessAnalyzer)  
 INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
-INFO  Creating temporary project: /Users/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
-INFO  Creating project: /Users/runner/work/_temp/ghidra-project/RussRecovery (DefaultProject)  
+INFO  Creating temporary project: /home/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
+INFO  Creating project: /home/runner/work/_temp/ghidra-project/RussRecovery (DefaultProject)  
 INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
-INFO       project: /Users/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
-INFO  IMPORTING: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO       project: /home/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
 WARN  Using unknown opinion: Mac OS X Mach-O, AARCH64:LE:64:v8A:default (LcsHintLoadSpecChooser)  
 INFO  Using Loader: Mac OS X Mach-O (ProgramLoader)  
 INFO  Using Language/Compiler: AARCH64:LE:64:v8A:default (ProgramLoader)  
-INFO  Using Library Search Path: [., /System/Library/dyld/dyld_shared_cache_arm64e, /System/Library/dyld/dyld_shared_cache_x86_64, /System/Library/dyld/dyld_shared_cache_x86_64h, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_arm64e, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_x86_64, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_x86_64h, /Users/runner/Library/Java/Extensions, /Library/Java/Extensions, /Network/Library/Java/Extensions, /System/Library/Java/Extensions, /usr/lib/java] (ProgramLoader)  
+INFO  Using Library Search Path: [., /bin, /lib, /lib64, /lib/x86_64-linux-gnu, /lib/aarch64-linux-gnu, /usr/bin, /usr/lib, /usr/X11R6/bin, /usr/X11R6/lib, /usr/java/packages/lib, /usr/lib64] (ProgramLoader)  
 INFO  Additional info:
-Loading file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib?MD5=1a88942cf168b0e5a4a65d1f36306ab7...
+Loading file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib?MD5=1a88942cf168b0e5a4a65d1f36306ab7...
 Discovered 2119 DYLD_CHAINED_PTR_64 chained pointers.
 Fixed up 2119 chained pointers.
 RussOriginal.dylib: installed 8 objc SpecExtensions
@@ -86,113 +90,61 @@ Linking the External Programs of 'RussOriginal.dylib' to imported libraries...
 
  (ProgramLoader)  
 INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
-INFO  ANALYZING all memory and code: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
 INFO  hit non-returning function, restarting decompiler switch analyzer later (DecompilerSwitchAnalyzer)  
-ERROR os/mac_arm_64/decompile does not exist (see GettingStarted.md, 'Building Native Components') (DecompileProcessFactory)  
 INFO  Packed database cache: /var/tmp/runner-ghidra/packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: mac_osx (ApplyDataArchiveAnalyzer)  
-ERROR Unexpected exception (DecompilerCallConventionAnalyzer) java.util.concurrent.ExecutionException: java.io.IOException: Unable to create decompiler for program: RussOriginal.dylib - .ProgramDB
-Could not find decompiler executable
-	at java.base/java.util.concurrent.FutureTask.report(FutureTask.java:122)
-	at java.base/java.util.concurrent.FutureTask.get(FutureTask.java:191)
-	at generic.concurrent.QResult.<init>(QResult.java:40)
-	at generic.concurrent.FutureTaskMonitor.run(FutureTaskMonitor.java:77)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1583)
-Caused by: java.io.IOException: Unable to create decompiler for program: RussOriginal.dylib - .ProgramDB
-Could not find decompiler executable
-	at ghidra.app.cmd.function.DecompilerParallelConventionAnalysisCmd.createDecompilerInterface(DecompilerParallelConventionAnalysisCmd.java:67)
-	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$DecompilerFactory.doCreate(DecompilerCallConventionAnalyzer.java:259)
-	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$DecompilerFactory.doCreate(DecompilerCallConventionAnalyzer.java:249)
-	at generic.cache.CountingBasicFactory.create(CountingBasicFactory.java:30)
-	at generic.cache.CachingPool.get(CachingPool.java:81)
-	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$ParallelDecompilerCallback.run(DecompilerCallConventionAnalyzer.java:284)
-	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$ParallelDecompilerCallback.run(DecompilerCallConventionAnalyzer.java:268)
-	at generic.concurrent.QRunnableAdapter.process(QRunnableAdapter.java:31)
-	at generic.concurrent.ConcurrentQ$CallbackCallable.call(ConcurrentQ.java:706)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at generic.concurrent.FutureTaskMonitor.run(FutureTaskMonitor.java:75)
-	... 3 more
- 
+WARN  Unable to fully apply external demangled Address Table at 00102d00: std::length_error::typeinfo (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00102e00: std::bad_array_new_length::typeinfo (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00102f00: std::length_error::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: <EXTERNAL>::std::length_error::typeinfo (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::bad_array_new_length::typeinfo (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::length_error::vtable (DemangledAddressTable)  
 INFO  -----------------------------------------------------
     AARCH64 ELF PLT Thunks                     0.000 secs
-    ASCII Strings                              0.357 secs
-    Apply Data Archives                        0.244 secs
-    Basic Constant Reference Analyzer          1.781 secs
-    CFStrings                                  0.017 secs
-    Call Convention ID                         0.030 secs
-    Call-Fixup Installer                       0.016 secs
-    Create Address Tables                      0.110 secs
-    Create Address Tables - One Time           0.039 secs
-    Create Function                            0.148 secs
-    Data Reference                             0.258 secs
-    Decompiler Switch Analysis                 0.863 secs
-    Decompiler Switch Analysis - One Time      0.323 secs
-    Demangler GNU                              0.627 secs
-    Demangler Swift                            8.369 secs
-    Disassemble                                0.460 secs
-    Disassemble Entry Points                   0.062 secs
-    Embedded Media                             0.157 secs
-    External Entry References                  0.001 secs
-    Function ID                                0.026 secs
-    Function Start Search                      0.070 secs
-    Function Start Search After Code           0.022 secs
-    Function Start Search After Data           0.034 secs
-    Function Start Search delayed - One Time   0.016 secs
-    Mach-O Function Starts                     0.092 secs
-    Non-Returning Functions - Discovered       0.117 secs
-    Non-Returning Functions - Known            0.005 secs
-    Objective-C Message Analyzer               0.157 secs
-    Objective-C Type Metadata Analyzer         1.374 secs
-    Reference                                  0.229 secs
-    Shared Return Calls                        0.177 secs
-    Stack                                      1.568 secs
-    Subroutine References                      0.229 secs
+    ASCII Strings                              0.519 secs
+    Apply Data Archives                        0.335 secs
+    Basic Constant Reference Analyzer          2.655 secs
+    CFStrings                                  0.030 secs
+    Call Convention ID                         3.104 secs
+    Call-Fixup Installer                       0.024 secs
+    Create Address Tables                      0.072 secs
+    Create Address Tables - One Time           0.063 secs
+    Create Function                            0.202 secs
+    Data Reference                             0.260 secs
+    Decompiler Switch Analysis                10.107 secs
+    Decompiler Switch Analysis - One Time      3.541 secs
+    Demangler GNU                              0.217 secs
+    Demangler Swift                            4.302 secs
+    Disassemble                                0.477 secs
+    Disassemble Entry Points                   0.089 secs
+    Embedded Media                             1.179 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.023 secs
+    Function Start Search                      0.072 secs
+    Function Start Search After Code           0.028 secs
+    Function Start Search After Data           0.025 secs
+    Function Start Search delayed - One Time   0.022 secs
+    Mach-O Function Starts                     0.094 secs
+    Non-Returning Functions - Discovered       0.183 secs
+    Non-Returning Functions - Known            0.007 secs
+    Objective-C Message Analyzer              12.911 secs
+    Objective-C Type Metadata Analyzer         1.630 secs
+    Reference                                  0.232 secs
+    Shared Return Calls                        0.195 secs
+    Stack                                      2.464 secs
+    Subroutine References                      0.225 secs
     Subroutine References - One Time           0.003 secs
-    Swift Type Metadata Analyzer               0.085 secs
+    Swift Type Metadata Analyzer               0.061 secs
 -----------------------------------------------------
-     Total Time   18 secs
+     Total Time   45 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
-INFO  REPORT: Analysis succeeded for file: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
 INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/RussNativeRecovered.c'  (HeadlessAnalyzer)  
-RecoverNative.java:57: error: cannot find symbol
-                    writer.printf("/* Unable to decompile %s at %s */%n%n", functionName, function.getEntryPoint());
-                                                                            ^
-  symbol:   variable functionName
-  location: class RecoverNative
-RecoverNative.java:61: error: cannot find symbol
-                writer.printf("/* %s at %s */%n", functionName, function.getEntryPoint());
-                                                  ^
-  symbol:   variable functionName
-  location: class RecoverNative
-skipping /Users/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java
-ERROR REPORT SCRIPT ERROR: RecoverNative.java : The class could not be found. It must be the public class of the .java file: RecoverNative not found by c32ac31e [1] (HeadlessAnalyzer) ghidra.app.script.GhidraScriptLoadException: The class could not be found. It must be the public class of the .java file: RecoverNative not found by c32ac31e [1]
-	at ghidra.app.script.JavaScriptProvider.getScriptInstance(JavaScriptProvider.java:114)
-	at ghidra.app.util.headless.HeadlessAnalyzer.runScriptsList(HeadlessAnalyzer.java:915)
-	at ghidra.app.util.headless.HeadlessAnalyzer.analyzeProgram(HeadlessAnalyzer.java:1085)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processFileWithImport(HeadlessAnalyzer.java:1583)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processWithLoader(HeadlessAnalyzer.java:1743)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processWithImport(HeadlessAnalyzer.java:1684)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processWithImport(HeadlessAnalyzer.java:1768)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processLocal(HeadlessAnalyzer.java:452)
-	at ghidra.app.util.headless.AnalyzeHeadless.launch(AnalyzeHeadless.java:199)
-	at ghidra.GhidraLauncher.launch(GhidraLauncher.java:81)
-	at ghidra.Ghidra.main(Ghidra.java:54)
-Caused by: java.lang.ClassNotFoundException: RecoverNative not found by c32ac31e [1]
-	at org.apache.felix.framework.BundleWiringImpl.findClassOrResourceByDelegation(BundleWiringImpl.java:1591)
-	at org.apache.felix.framework.BundleWiringImpl.access$300(BundleWiringImpl.java:79)
-	at org.apache.felix.framework.BundleWiringImpl$BundleClassLoader.loadClass(BundleWiringImpl.java:1976)
-	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:526)
-	at org.apache.felix.framework.Felix.loadBundleClass(Felix.java:2116)
-	at org.apache.felix.framework.BundleImpl.loadClass(BundleImpl.java:986)
-	at ghidra.app.script.JavaScriptProvider.loadClass(JavaScriptProvider.java:166)
-	at ghidra.app.script.JavaScriptProvider.getScriptInstance(JavaScriptProvider.java:97)
-	... 10 more
- 
-INFO  ANALYZING changes made by post scripts: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
-INFO  REPORT: Post-analysis succeeded for file: file:///Users/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java (HeadlessAnalyzer)  
+INFO  ANALYZING changes made by post scripts: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
 INFO  /RussOriginal.dylib: file created (runner) (LocalFileSystem)  
 INFO  REPORT: Save succeeded for: /RussOriginal.dylib (RussRecovery:/RussOriginal.dylib) (HeadlessAnalyzer)  
 INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
