@@ -1,53 +1,57 @@
-openjdk version "21.0.11" 2026-04-21 LTS
-OpenJDK Runtime Environment Temurin-21.0.11+10 (build 21.0.11+10-LTS)
-OpenJDK 64-Bit Server VM Temurin-21.0.11+10 (build 21.0.11+10-LTS, mixed mode)
-INFO  Using log config file: jar:file:/Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
-INFO  Using log file: /Users/runner/Library/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
-INFO  Loading user preferences: /Users/runner/Library/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
+openjdk version "25.0.4" 2026-07-21 LTS
+OpenJDK Runtime Environment Temurin-25.0.4+7 (build 25.0.4+7-LTS)
+OpenJDK 64-Bit Server VM Temurin-25.0.4+7 (build 25.0.4+7-LTS, mixed mode)
+INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1347 ms) (ClassSearcher)  
+INFO  Class search complete (928 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (9978 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (3150 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
+WARNING: Please consider reporting this to the maintainers of class org.apache.felix.framework.util.SecureAction
+WARNING: sun.misc.Unsafe::staticFieldOffset will be removed in a future release
 INFO  HEADLESS Script Paths:
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
-    /Users/runner/work/ipa/ipa/tools/ghidra
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SwiftDemangler/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
-    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts (HeadlessAnalyzer)  
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /home/runner/work/ipa/ipa/tools/ghidra
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
+    /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts (HeadlessAnalyzer)  
 INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
-INFO  Creating temporary project: /Users/runner/work/_temp/ghidra-project/CiyueRecovery (HeadlessAnalyzer)  
-INFO  Creating project: /Users/runner/work/_temp/ghidra-project/CiyueRecovery (DefaultProject)  
+INFO  Creating temporary project: /home/runner/work/_temp/ghidra-project/CiyueRecovery (HeadlessAnalyzer)  
+INFO  Creating project: /home/runner/work/_temp/ghidra-project/CiyueRecovery (DefaultProject)  
 INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
-INFO       project: /Users/runner/work/_temp/ghidra-project/CiyueRecovery (HeadlessAnalyzer)  
-INFO  IMPORTING: file:///Users/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO       project: /home/runner/work/_temp/ghidra-project/CiyueRecovery (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
 WARN  Using unknown opinion: Mac OS X Mach-O, AARCH64:LE:64:v8A:default (LcsHintLoadSpecChooser)  
 INFO  Using Loader: Mac OS X Mach-O (ProgramLoader)  
 INFO  Using Language/Compiler: AARCH64:LE:64:v8A:default (ProgramLoader)  
-INFO  Using Library Search Path: [., /System/Library/dyld/dyld_shared_cache_arm64e, /System/Library/dyld/dyld_shared_cache_x86_64, /System/Library/dyld/dyld_shared_cache_x86_64h, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_arm64e, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_x86_64, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_x86_64h, /Users/runner/Library/Java/Extensions, /Library/Java/Extensions, /Network/Library/Java/Extensions, /System/Library/Java/Extensions, /usr/lib/java] (ProgramLoader)  
+INFO  Using Library Search Path: [., /bin, /lib, /lib64, /lib/x86_64-linux-gnu, /lib/aarch64-linux-gnu, /usr/bin, /usr/lib, /usr/X11R6/bin, /usr/X11R6/lib, /usr/java/packages/lib, /usr/lib64] (ProgramLoader)  
 INFO  Additional info:
-Loading file:///Users/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib?MD5=3b300a5dc13764e4680ce3ccd2bb3e95...
+Loading file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib?MD5=3b300a5dc13764e4680ce3ccd2bb3e95...
 Ciyue0818.dylib: installed 8 objc SpecExtensions
 ------------------------------------------------
 
@@ -73,42 +77,25 @@ Linking the External Programs of 'Ciyue0818.dylib' to imported libraries...
 
  (ProgramLoader)  
 INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
-INFO  ANALYZING all memory and code: file:///Users/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
 INFO  hit non-returning function, restarting decompiler switch analyzer later (DecompilerSwitchAnalyzer)  
-ERROR os/mac_x86_64/decompile does not exist (see GettingStarted.md, 'Building Native Components') (DecompileProcessFactory)  
 ERROR VarnodeContext: out of address spaces at @000836dc for: x0-000836dc (VarnodeContext)  
 ERROR VarnodeContext: out of address spaces at @00207610 for: x11-00207610 (VarnodeContext)  
 ERROR VarnodeContext: out of address spaces at @0014e0c4 for: x18-0014e0c4 (VarnodeContext)  
 ERROR VarnodeContext: out of address spaces at @000dd128 for: x9-000dd128 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @0009b390 for: d25-0009b390 (VarnodeContext)  
 ERROR VarnodeContext: out of address spaces at @00053b88 for: x15-00053b88 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0009b390 for: d25-0009b390 (VarnodeContext)  
 ERROR VarnodeContext: out of address spaces at @00180550 for: x17-00180550 (VarnodeContext)  
 INFO  Packed database cache: /var/tmp/runner-ghidra/packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: mac_osx (ApplyDataArchiveAnalyzer)  
-ERROR Unexpected exception (DecompilerCallConventionAnalyzer) java.util.concurrent.ExecutionException: java.io.IOException: Unable to create decompiler for program: Ciyue0818.dylib - .ProgramDB
-Could not find decompiler executable
-	at java.base/java.util.concurrent.FutureTask.report(FutureTask.java:122)
-	at java.base/java.util.concurrent.FutureTask.get(FutureTask.java:191)
-	at generic.concurrent.QResult.<init>(QResult.java:40)
-	at generic.concurrent.FutureTaskMonitor.run(FutureTaskMonitor.java:77)
-	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
-	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
-	at java.base/java.lang.Thread.run(Thread.java:1583)
-Caused by: java.io.IOException: Unable to create decompiler for program: Ciyue0818.dylib - .ProgramDB
-Could not find decompiler executable
-	at ghidra.app.cmd.function.DecompilerParallelConventionAnalysisCmd.createDecompilerInterface(DecompilerParallelConventionAnalysisCmd.java:67)
-	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$DecompilerFactory.doCreate(DecompilerCallConventionAnalyzer.java:259)
-	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$DecompilerFactory.doCreate(DecompilerCallConventionAnalyzer.java:249)
-	at generic.cache.CountingBasicFactory.create(CountingBasicFactory.java:30)
-	at generic.cache.CachingPool.get(CachingPool.java:81)
-	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$ParallelDecompilerCallback.run(DecompilerCallConventionAnalyzer.java:284)
-	at ghidra.app.plugin.core.analysis.DecompilerCallConventionAnalyzer$ParallelDecompilerCallback.run(DecompilerCallConventionAnalyzer.java:268)
-	at generic.concurrent.QRunnableAdapter.process(QRunnableAdapter.java:31)
-	at generic.concurrent.ConcurrentQ$CallbackCallable.call(ConcurrentQ.java:706)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at generic.concurrent.FutureTaskMonitor.run(FutureTaskMonitor.java:75)
-	... 3 more
- 
+WARN  Unable to fully apply external demangled Address Table at 00517800: __cxxabiv1::__class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00517900: __cxxabiv1::__si_class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00517a00: std::length_error::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00517b00: std::out_of_range::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::__cxxabiv1::__class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::__cxxabiv1::__si_class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::length_error::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::out_of_range::vtable (DemangledAddressTable)  
 ERROR VarnodeContext: out of address spaces at @00083bb8 for: d18-00083bb8 (VarnodeContext)  
 ERROR VarnodeContext: out of address spaces at @00207604 for: d30-00207604 (VarnodeContext)  
 ERROR VarnodeContext: out of address spaces at @0014e0c4 for: x16-0014e0c4 (VarnodeContext)  
@@ -118,64 +105,51 @@ ERROR VarnodeContext: out of address spaces at @0009b390 for: d19-0009b390 (Varn
 ERROR VarnodeContext: out of address spaces at @00180544 for: d26-00180544 (VarnodeContext)  
 INFO  -----------------------------------------------------
     AARCH64 ELF PLT Thunks                     0.000 secs
-    ASCII Strings                              0.854 secs
-    Apply Data Archives                        0.443 secs
-    Basic Constant Reference Analyzer         50.103 secs
-    CFStrings                                  0.088 secs
-    Call Convention ID                         0.186 secs
-    Call-Fixup Installer                       0.127 secs
-    Create Address Tables                      0.951 secs
-    Create Address Tables - One Time           0.020 secs
-    Create Function                            3.220 secs
-    Data Reference                             2.895 secs
-    Decompiler Switch Analysis                 3.549 secs
-    Decompiler Switch Analysis - One Time      1.279 secs
-    Demangler GNU                              0.587 secs
-    Disassemble                                0.881 secs
-    Disassemble Entry Points                   0.066 secs
-    Embedded Media                             0.087 secs
+    ASCII Strings                              0.603 secs
+    Apply Data Archives                        0.356 secs
+    Basic Constant Reference Analyzer         27.179 secs
+    CFStrings                                  0.055 secs
+    Call Convention ID                         2.798 secs
+    Call-Fixup Installer                       0.122 secs
+    Create Address Tables                      0.770 secs
+    Create Address Tables - One Time           0.019 secs
+    Create Function                            2.119 secs
+    Data Reference                             0.689 secs
+    Decompiler Switch Analysis                10.265 secs
+    Decompiler Switch Analysis - One Time     44.445 secs
+    Demangler GNU                              0.242 secs
+    Disassemble                                0.524 secs
+    Disassemble Entry Points                   0.039 secs
+    Embedded Media                             0.058 secs
     External Entry References                  0.000 secs
-    Function ID                                0.040 secs
-    Function Start Search                      0.507 secs
-    Function Start Search After Code           0.221 secs
-    Function Start Search After Data           0.227 secs
-    Function Start Search delayed - One Time   0.075 secs
-    Mach-O Function Starts                     0.023 secs
-    Non-Returning Functions - Discovered       1.363 secs
-    Non-Returning Functions - Known            0.009 secs
-    Objective-C Message Analyzer               0.843 secs
-    Objective-C Type Metadata Analyzer        18.969 secs
-    Reference                                  1.502 secs
-    Shared Return Calls                        1.397 secs
-    Stack                                     68.375 secs
-    Subroutine References                      1.438 secs
-    Subroutine References - One Time           0.002 secs
+    Function ID                                0.031 secs
+    Function Start Search                      0.248 secs
+    Function Start Search After Code           0.168 secs
+    Function Start Search After Data           0.319 secs
+    Function Start Search delayed - One Time   0.114 secs
+    Mach-O Function Starts                     0.016 secs
+    Non-Returning Functions - Discovered       1.337 secs
+    Non-Returning Functions - Known            0.006 secs
+    Objective-C Message Analyzer             161.984 secs
+    Objective-C Type Metadata Analyzer        10.793 secs
+    Reference                                  0.754 secs
+    Shared Return Calls                        0.887 secs
+    Stack                                     30.954 secs
+    Subroutine References                      0.866 secs
+    Subroutine References - One Time           0.001 secs
 -----------------------------------------------------
-     Total Time   160 secs
+     Total Time   298 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
-INFO  REPORT: Analysis succeeded for file: file:///Users/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
 INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/CiyueNativeRecovered.c'  (HeadlessAnalyzer)  
-INFO  SCRIPT: /Users/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java (HeadlessAnalyzer)  
-ERROR REPORT SCRIPT ERROR:  (HeadlessAnalyzer) java.lang.IllegalStateException: Unable to open program for decompilation
-	at RecoverNative.run(RecoverNative.java:239)
-	at ghidra.app.script.GhidraScript.executeNormal(GhidraScript.java:460)
-	at ghidra.app.script.GhidraScript.doExecute(GhidraScript.java:314)
-	at ghidra.app.script.GhidraScript.execute(GhidraScript.java:290)
-	at ghidra.app.util.headless.HeadlessAnalyzer.runScript(HeadlessAnalyzer.java:585)
-	at ghidra.app.util.headless.HeadlessAnalyzer.runScriptsList(HeadlessAnalyzer.java:929)
-	at ghidra.app.util.headless.HeadlessAnalyzer.analyzeProgram(HeadlessAnalyzer.java:1085)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processFileWithImport(HeadlessAnalyzer.java:1583)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processWithLoader(HeadlessAnalyzer.java:1743)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processWithImport(HeadlessAnalyzer.java:1684)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processWithImport(HeadlessAnalyzer.java:1768)
-	at ghidra.app.util.headless.HeadlessAnalyzer.processLocal(HeadlessAnalyzer.java:452)
-	at ghidra.app.util.headless.AnalyzeHeadless.launch(AnalyzeHeadless.java:199)
-	at ghidra.GhidraLauncher.launch(GhidraLauncher.java:81)
-	at ghidra.Ghidra.main(Ghidra.java:54)
- 
-INFO  ANALYZING changes made by post scripts: file:///Users/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
-INFO  REPORT: Post-analysis succeeded for file: file:///Users/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  SCRIPT: /home/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java (HeadlessAnalyzer)  
+WARN  Decompiling 00511d01, pcode error at 00511d01: Invalid instruction address (improperly aligned) (DecompileCallback)  
+WARN  Decompiling 00512602, pcode error at 00512602: Invalid instruction address (improperly aligned) (DecompileCallback)  
+WARN  Decompiling 00512e01, pcode error at 00512e01: Invalid instruction address (improperly aligned) (DecompileCallback)  
+WARN  Decompiling 00513a01, pcode error at 00513a01: Invalid instruction address (improperly aligned) (DecompileCallback)  
+INFO  ANALYZING changes made by post scripts: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
 INFO  /Ciyue0818.dylib: file created (runner) (LocalFileSystem)  
 INFO  REPORT: Save succeeded for: /Ciyue0818.dylib (CiyueRecovery:/Ciyue0818.dylib) (HeadlessAnalyzer)  
 INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
