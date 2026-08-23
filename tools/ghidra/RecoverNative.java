@@ -20,6 +20,7 @@ import ghidra.program.model.address.Address;
 
 public class RecoverNative extends GhidraScript {
     private static final int MAX_EVIDENCE_FUNCTIONS = 96;
+    private static final int MAX_DIRECT_CALLEES_PER_EVIDENCE_FUNCTION = 20;
 
     private boolean isTargetFunction(String functionName) {
         return functionName.contains("YYGameMemory") ||
@@ -148,6 +149,7 @@ public class RecoverNative extends GhidraScript {
             if (function != null) {
                 offsets.add(function.getEntryPoint().getOffset());
                 addCallers(function, offsets);
+                addDirectCallees(function, offsets);
             } else if (!followDataReferences) {
                 // Objective-C 常量字符串先由 __cfstring 数据项引用，再由代码引用该数据项。
                 addFunctionAndCallerReferences(reference.getFromAddress(), offsets, true);
@@ -160,6 +162,21 @@ public class RecoverNative extends GhidraScript {
         while (callers.hasNext() && offsets.size() < MAX_EVIDENCE_FUNCTIONS) {
             Function caller = currentProgram.getFunctionManager().getFunctionContaining(callers.next().getFromAddress());
             if (caller != null) offsets.add(caller.getEntryPoint().getOffset());
+        }
+    }
+
+    private void addDirectCallees(Function function, Set<Long> offsets) {
+        int added = 0;
+        try {
+            for (Function callee : function.getCalledFunctions(monitor)) {
+                if (callee == null || offsets.size() >= MAX_EVIDENCE_FUNCTIONS ||
+                    added >= MAX_DIRECT_CALLEES_PER_EVIDENCE_FUNCTION) {
+                    return;
+                }
+                if (offsets.add(callee.getEntryPoint().getOffset())) added++;
+            }
+        } catch (Exception exception) {
+            // 某些间接调用无法在静态分析中解析，保留已有字符串引用结果。
         }
     }
 
