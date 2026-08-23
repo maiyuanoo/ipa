@@ -857,6 +857,51 @@ static NSUInteger SetIslandRouteVisible(BOOL visible) {
 }
 /*仅操作 FindPathLineCtrl.lineRender；pointsList 为空说明路线尚未生成，不触碰其他 LineRenderer*/
 
+static NSUInteger CopyIslandRouteWorldPoints(float *output, NSUInteger capacity) {
+    if (output == NULL || capacity < 2 || !EnsureIl2CppThread()) return 0;
+    if (gFindPathLineCtrlKlass == NULL) {
+        gFindPathLineCtrlKlass = FindClassInAllAssemblies("", "FindPathLineCtrl");
+        if (gFindPathLineCtrlKlass == NULL) return 0;
+    }
+    if (gRoutePointsListField == NULL) {
+        gRoutePointsListField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "pointsList");
+        if (gRoutePointsListField == NULL || gIl2CppFieldGetValue == NULL) return 0;
+    }
+    Il2CppArray *controllers = ScanObjectsOfClass(gFindPathLineCtrlKlass, YES);
+    if (controllers == NULL) return 0;
+
+    Il2CppObject *bestList = NULL;
+    int32_t bestCount = 0;
+    for (uintptr_t index = 0; index < controllers->maxLength; index++) {
+        Il2CppObject *controller = controllers->objects[index];
+        Il2CppObject *pointsList = NULL;
+        if (controller == NULL) continue;
+        gIl2CppFieldGetValue(controller, gRoutePointsListField, &pointsList);
+        int32_t count = 0;
+        if (pointsList == NULL || !ReadProcessMemory((uintptr_t)pointsList + 0x18, &count, sizeof(count)) ||
+            count < 2 || count > 4096 || count <= bestCount) continue;
+        bestList = pointsList;
+        bestCount = count;
+    }
+    if (bestList == NULL) return 0;
+
+    /*Russ 0x8f48：List<Vector3> 的 _items 位于+0x10、_size 位于+0x18，
+      Vector3[] 数据从数组+0x20开始，每个元素12字节。*/
+    uintptr_t items = 0;
+    uintptr_t maxLength = 0;
+    if (!ReadProcessMemory((uintptr_t)bestList + 0x10, &items, sizeof(items)) || items < 0x10000 ||
+        !ReadProcessMemory(items + 0x18, &maxLength, sizeof(maxLength)) || maxLength < 2 || maxLength > 4096) return 0;
+    NSUInteger count = (NSUInteger)MIN((uint64_t)bestCount, (uint64_t)maxLength);
+    count = MIN(count, capacity);
+    size_t byteLength = count * 3 * sizeof(float);
+    if (!ReadProcessMemory(items + 0x20, output, byteLength)) return 0;
+    for (NSUInteger index = 0; index < count * 3; index++) {
+        if (!isfinite(output[index]) || fabsf(output[index]) > 1000000.0f) return 0;
+    }
+    return count;
+}
+/*原版 YYIslandRouteCopyScreenPoints 的数据源：选取有效 pointsList 并读取其 Vector3 路径点*/
+
 static void *gTransformKlass;
 static const MethodInfo *gGetTransformMethod;
 static const MethodInfo *gGetPositionMethod;
@@ -939,6 +984,10 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 @property(nonatomic, assign) NSUInteger markerFrameTick;
 @property(nonatomic, assign) uint32_t coffinArrayHandle;
 @property(nonatomic, assign) Il2CppArray *coffinArrayRaw;
+@property(nonatomic, strong) CADisplayLink *routeDisplayLink;
+@property(nonatomic, strong) UIView *routeOverlay;
+@property(nonatomic, strong) CAShapeLayer *routeShadowLayer;
+@property(nonatomic, strong) CAShapeLayer *routeLineLayer;
 @property(nonatomic, strong) CADisplayLink *runtimeDisplayLink;
 @property(nonatomic, assign) NSUInteger runtimeFrameTick;
 @property(nonatomic, assign) BOOL lifecycleObserversInstalled;
@@ -998,11 +1047,13 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 - (void)pauseOverlayRendering {
     self.runtimeDisplayLink.paused = YES;
     self.coffinDisplayLink.paused = YES;
+    self.routeDisplayLink.paused = YES;
 }
 
 - (void)resumeOverlayRendering {
     self.runtimeDisplayLink.paused = NO;
     self.coffinDisplayLink.paused = NO;
+    self.routeDisplayLink.paused = NO;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 200 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
         [self restoreFeatureRuntime];
         [self tickRuntime];
@@ -1395,6 +1446,8 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
         [self setCardHint:key text:enabled ? @"已调整角色相机视角" : @"已恢复角色相机视角"];
     } else if ([key isEqualToString:@"islandRoute"]) {
         NSUInteger count = SetIslandRouteVisible(enabled);
+        if (enabled) [self startIslandRouteOverlay];
+        else [self stopIslandRouteOverlay];
         [self setCardHint:key text:[NSString stringWithFormat:@"%@", enabled ? [NSString stringWithFormat:@"已显示 %lu 条路线", (unsigned long)count] : @"已隐藏所有路线"]];
     } else if ([key isEqualToString:@"demagnetization"]) {
         NSUInteger count = enabled ? ApplyDemagnetization([self sliderValueForKey:@"demagnetization"]) : ApplyDemagnetization(0.0);
@@ -1523,6 +1576,89 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 }
 /*棺材透视开启 全屏透明overlay+8标记池 cadisplaylink每帧 照原版displaylink架构 */
 
+- (void)startIslandRouteOverlay {
+    if (self.routeDisplayLink != nil) return;
+    UIWindow *window = self.floatingButton.window;
+    if (window == nil) return;
+    self.routeOverlay = [[UIView alloc] initWithFrame:window.bounds];
+    self.routeOverlay.backgroundColor = UIColor.clearColor;
+    self.routeOverlay.userInteractionEnabled = NO;
+    self.routeOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+
+    self.routeShadowLayer = [CAShapeLayer layer];
+    self.routeShadowLayer.strokeColor = [UIColor colorWithWhite:0.0 alpha:0.72].CGColor;
+    self.routeShadowLayer.fillColor = UIColor.clearColor.CGColor;
+    self.routeShadowLayer.lineWidth = 7.0;
+    self.routeShadowLayer.lineCap = kCALineCapRound;
+    self.routeShadowLayer.lineJoin = kCALineJoinRound;
+    [self.routeOverlay.layer addSublayer:self.routeShadowLayer];
+
+    self.routeLineLayer = [CAShapeLayer layer];
+    self.routeLineLayer.strokeColor = [UIColor colorWithRed:0.16 green:0.83 blue:1.0 alpha:0.95].CGColor;
+    self.routeLineLayer.fillColor = UIColor.clearColor.CGColor;
+    self.routeLineLayer.lineWidth = 3.0;
+    self.routeLineLayer.lineCap = kCALineCapRound;
+    self.routeLineLayer.lineJoin = kCALineJoinRound;
+    [self.routeOverlay.layer addSublayer:self.routeLineLayer];
+    [window addSubview:self.routeOverlay];
+
+    self.routeDisplayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateIslandRouteOverlay)];
+    [self.routeDisplayLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
+}
+/*Russ 路线覆盖层：原版同样使用 displayLink、shadowLayer 和 routeLayer 双层路径*/
+
+- (void)stopIslandRouteOverlay {
+    [self.routeDisplayLink invalidate];
+    self.routeDisplayLink = nil;
+    self.routeShadowLayer.path = nil;
+    self.routeLineLayer.path = nil;
+    [self.routeOverlay removeFromSuperview];
+    self.routeOverlay = nil;
+    self.routeShadowLayer = nil;
+    self.routeLineLayer = nil;
+}
+/*关闭时清路径并移除覆盖层，对齐原版 setRouteEnabled:NO*/
+
+- (void)updateIslandRouteOverlay {
+    if (self.routeOverlay == nil || self.routeLineLayer == nil || self.routeShadowLayer == nil) return;
+    float worldPoints[512 * 3] = {0};
+    NSUInteger pointCount = CopyIslandRouteWorldPoints(worldPoints, 512);
+    Il2CppObject *camera = GetMainCameraObject();
+    if (pointCount < 2 || camera == NULL) {
+        self.routeShadowLayer.path = nil;
+        self.routeLineLayer.path = nil;
+        return;
+    }
+
+    CGFloat width = self.routeOverlay.bounds.size.width;
+    CGFloat height = self.routeOverlay.bounds.size.height;
+    UIBezierPath *path = [UIBezierPath bezierPath];
+    BOOL hasSegment = NO;
+    BOOL canContinue = NO;
+    for (NSUInteger index = 0; index < pointCount; index++) {
+        float sx = 0.0f, sy = 0.0f, depth = -1.0f;
+        if (!ProjectWorldToScreen(camera, worldPoints[index * 3], worldPoints[index * 3 + 1], worldPoints[index * 3 + 2], &sx, &sy, &depth) ||
+            depth <= 0.0f || sx < -width || sx > width * 2.0 || sy < -height || sy > height * 2.0) {
+            canContinue = NO;
+            continue;
+        }
+        CGPoint point = CGPointMake(sx, height - sy);
+        if (!canContinue) [path moveToPoint:point];
+        else [path addLineToPoint:point];
+        canContinue = YES;
+        hasSegment = YES;
+    }
+    CGPathRef renderedPath = hasSegment ? path.CGPath : nil;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.routeShadowLayer.frame = self.routeOverlay.bounds;
+    self.routeLineLayer.frame = self.routeOverlay.bounds;
+    self.routeShadowLayer.path = renderedPath;
+    self.routeLineLayer.path = renderedPath;
+    [CATransaction commit];
+}
+/*按原版 pointsList → 屏幕点的处理链实时绘制；无有效点或镜头后点会清空断开片段*/
+
 - (void)stopCoffinMarkers {
     [self.coffinDisplayLink invalidate];
     self.coffinDisplayLink = nil;
@@ -1616,6 +1752,9 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     }
     if ([self.featureStates[@"coffin"] boolValue]) {
         [self startCoffinMarkers];
+    }
+    if ([self.featureStates[@"islandRoute"] boolValue]) {
+        [self startIslandRouteOverlay];
     }
     ApplyCameraFollow([self sliderValueForKey:@"thirdPersonFOV"], [self sliderValueForKey:@"firstPersonFOV"]);
     ApplyTimeScale([self sliderValueForKey:@"globalSpeed"]);
