@@ -3035,6 +3035,25 @@ undefined8 FUN_00019c00(void)
 
 
 
+/* FUN_00019c98 at 00019c98 */
+
+void FUN_00019c98(void)
+
+{
+  undefined8 uVar1;
+  
+  uVar1 = _objc_autoreleasePoolPush();
+  if ((((DAT_000e7278 & 1) != 0) || ((DAT_000e748c & 1) != 0)) || ((DAT_000e749c & 1) != 0)) {
+    _CACurrentMediaTime();
+    FUN_00019afc();
+  }
+  FUN_00019cf0();
+  _objc_autoreleasePoolPop(uVar1);
+  return;
+}
+
+
+
 /* FUN_00019cf0 at 00019cf0 */
 
 void FUN_00019cf0(void)
@@ -3218,6 +3237,66 @@ void FUN_00019fbc(void)
             ((dispatch_source_t)DAT_000e7170._os_obj,0xffffffffffffffff,0xffffffffffffffff,0);
   _dispatch_source_set_event_handler(DAT_000e7170._os_obj,&PTR___NSConcreteGlobalBlock_000e1330);
   _dispatch_resume(DAT_000e7170);
+  return;
+}
+
+
+
+/* FUN_0001a040 at 0001a040 */
+
+void FUN_0001a040(void)
+
+{
+  bool bVar1;
+  bool bVar2;
+  bool bVar3;
+  bool bVar4;
+  bool bVar5;
+  double dVar6;
+  double dVar7;
+  
+  dVar6 = (double)_CACurrentMediaTime();
+  if (((DAT_000e7260 & 1) != 0) || ((DAT_000e6834 & 1) != 0)) {
+    FUN_00019624(dVar6);
+  }
+  if ((DAT_000e7279 & 1) == 0) {
+    dVar7 = 0.0;
+    if (DAT_000e7478 == '\x01') {
+      FUN_00019894(dVar6);
+    }
+  }
+  else {
+    dVar7 = DAT_000e7228 - dVar6;
+    bVar1 = false;
+    bVar4 = false;
+    if (0.0 < DAT_000e7228) {
+      bVar1 = false;
+      bVar4 = true;
+      if (!NAN(dVar6) && !NAN(DAT_000e7228)) {
+        bVar1 = dVar6 < DAT_000e7228;
+        bVar4 = false;
+      }
+    }
+    bVar2 = false;
+    bVar3 = false;
+    bVar5 = false;
+    if (bVar1 != bVar4) {
+      bVar2 = false;
+      bVar3 = false;
+      bVar5 = true;
+      if (!NAN(dVar7)) {
+        bVar2 = dVar7 < 1.0;
+        bVar3 = dVar7 == 1.0;
+        bVar5 = false;
+      }
+    }
+    dVar7 = DAT_000e7228;
+    if (!bVar3 && bVar2 == bVar5) {
+      FUN_00019894(dVar6);
+      dVar7 = dVar6 + DAT_000d70c8;
+    }
+  }
+  DAT_000e7228 = dVar7;
   return;
 }
 
@@ -4900,4 +4979,4 @@ void FUN_0003ee20(void)
 
 
 
-/* Recovered functions: 69 */
+/* Recovered functions: 71 */
