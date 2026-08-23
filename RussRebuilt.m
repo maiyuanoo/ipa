@@ -283,7 +283,8 @@ static BOOL WriteCameraFollowFloat(Il2CppObject *instance, void *field, float va
     }
     if (gIl2CppFieldGetOffset == NULL) return NO;
     size_t offset = gIl2CppFieldGetOffset(field);
-    if (offset < sizeof(Il2CppObject)) return NO;
+    /* Il2CppObject 头固定为 klass 与 monitor 两个指针，共 16 字节。 */
+    if (offset < 0x10) return NO;
     *(float *)((uint8_t *)instance + offset) = value;
     return YES;
 }
