@@ -24,7 +24,12 @@ public class RecoverNative extends GhidraScript {
 
     private boolean isRuntimeDispatcher(Function function) {
         long entryOffset = function.getEntryPoint().getOffset();
-        return entryOffset == 0x17098L || entryOffset == 0x17184L ||
+        return entryOffset == 0x0a474L || entryOffset == 0x0a528L ||
+            entryOffset == 0x0a538L || entryOffset == 0x0a5d4L ||
+            entryOffset == 0x0a6dcL || entryOffset == 0x0a75cL ||
+            entryOffset == 0x0a864L || entryOffset == 0x2537f8L ||
+            entryOffset == 0x2537fcL ||
+            entryOffset == 0x17098L || entryOffset == 0x17184L ||
             entryOffset == 0x0684cL || entryOffset == 0x06bf4L ||
             entryOffset == 0x06c64L || entryOffset == 0x06d1cL ||
             entryOffset == 0x07d20L || entryOffset == 0x07ef8L ||

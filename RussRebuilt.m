@@ -722,6 +722,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 @property(nonatomic, assign) Il2CppArray *coffinArrayRaw;
 @property(nonatomic, strong) CADisplayLink *runtimeDisplayLink;
 @property(nonatomic, assign) NSUInteger runtimeFrameTick;
+@property(nonatomic, assign) BOOL lifecycleObserversInstalled;
 @end
 /*照原版menuview结构 mainpanel featurestates 4滑块值 验证passed 面板visible 棺材标记overlay+gchandle数组 引擎状态标签*/
 
@@ -731,6 +732,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     [self loadSettings];
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        [self installLifecycleObserversIfNeeded];
         UIWindow *window = nil;
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
             if (![scene isKindOfClass:[UIWindowScene class]]) continue;
@@ -763,6 +765,31 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     });
 }
 /*入口 悬浮按钮russ可拖动 点击开面板 构建ui+欢迎页 引擎常驻(重试连接+状态刷新) 恢复上次功能状态*/
+
+- (void)installLifecycleObserversIfNeeded {
+    if (self.lifecycleObserversInstalled) return;
+    self.lifecycleObserversInstalled = YES;
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    [center addObserver:self selector:@selector(pauseOverlayRendering) name:UIApplicationWillResignActiveNotification object:nil];
+    [center addObserver:self selector:@selector(pauseOverlayRendering) name:UIApplicationDidEnterBackgroundNotification object:nil];
+    [center addObserver:self selector:@selector(resumeOverlayRendering) name:UIApplicationDidBecomeActiveNotification object:nil];
+}
+/*对齐辞月 hookui_pauseRendering/hookui_resumeRendering：切后台暂停帧回调，回前台后恢复*/
+
+- (void)pauseOverlayRendering {
+    self.runtimeDisplayLink.paused = YES;
+    self.coffinDisplayLink.paused = YES;
+}
+
+- (void)resumeOverlayRendering {
+    self.runtimeDisplayLink.paused = NO;
+    self.coffinDisplayLink.paused = NO;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 200 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+        [self restoreFeatureRuntime];
+        [self tickRuntime];
+    });
+}
+/*辞月恢复逻辑在主线程延迟200ms后恢复 MTK 绘制；本实现重建 Unity 状态并立刻补一次运行时刷新*/
 
 - (void)buildInterfaceInWindow:(UIWindow *)window {
     CGFloat screenHeight = window.bounds.size.height;
