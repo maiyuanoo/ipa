@@ -845,12 +845,12 @@ static BOOL CacheAndApplyCoffinGraphicAlpha(Il2CppObject *graphic, float alphaFa
 static NSUInteger ApplyCoffinEntryList(Il2CppObject *listObject, float alphaFactor) {
     if (listObject == NULL) return 0;
 
-    /*原版 0x18 读取 List._items + _size，随后按数组0x20、条目0x18读取；
+    /*原版最终按 List._items(+0x10)、List._size(+0x18) 取得条目数组，随后按数组0x20、条目0x18读取；
       每条仅在 state >= 0 且对象确为 UnityEngine.UI.Image 时修改。*/
     uintptr_t itemsAddress = 0;
     int32_t count = 0;
-    if (!ReadProcessMemory((uintptr_t)listObject + 0x18, &itemsAddress, sizeof(itemsAddress)) ||
-        !ReadProcessMemory((uintptr_t)listObject + 0x20, &count, sizeof(count)) ||
+    if (!ReadProcessMemory((uintptr_t)listObject + 0x10, &itemsAddress, sizeof(itemsAddress)) ||
+        !ReadProcessMemory((uintptr_t)listObject + 0x18, &count, sizeof(count)) ||
         itemsAddress < 0x10000 || count <= 0 || count > 4096) return 0;
 
     uintptr_t maxLength = 0;
