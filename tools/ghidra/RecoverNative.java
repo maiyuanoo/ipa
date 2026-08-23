@@ -55,6 +55,11 @@ public class RecoverNative extends GhidraScript {
             entryOffset == 0x09418L || entryOffset == 0x094ccL ||
             entryOffset == 0x09570L || entryOffset == 0x09690L ||
             entryOffset == 0x09708L ||
+            // 辞月实体缓存快照：读取、写入和释放辅助函数。
+            entryOffset == 0x03e7e8L || entryOffset == 0x066584L ||
+            entryOffset == 0x0723c4L || entryOffset == 0x074720L ||
+            entryOffset == 0x0861acL || entryOffset == 0x086210L ||
+            entryOffset == 0x08634cL || entryOffset == 0x0863ecL ||
             entryOffset == 0x17720L || entryOffset == 0x195a8L ||
             entryOffset == 0x19624L || entryOffset == 0x19894L ||
             entryOffset == 0x19afcL || entryOffset == 0x19cf0L ||
