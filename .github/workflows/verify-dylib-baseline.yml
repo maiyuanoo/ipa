@@ -31,6 +31,7 @@ jobs:
             -framework UIKit
             -framework QuartzCore
             -Wl,-install_name,@rpath/RussRebuilt.dylib
+            -Wl,-no_uuid
           )
 
           clang "${COMMON_FLAGS[@]}" RussRebuilt.m -o "$RUNNER_TEMP/current.dylib"
