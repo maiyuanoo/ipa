@@ -243,6 +243,14 @@ static NSUInteger gTargetActorCount;
 static NSUInteger gTargetUgcCount;
 static NSUInteger gTargetUgcMapCount;
 static BOOL gTargetEntityProbeReady;
+typedef NS_ENUM(NSInteger, TargetEntityProbeState) {
+    TargetEntityProbeWaitingAssembly = 0,
+    TargetEntityProbeWaitingFields,
+    TargetEntityProbeWaitingSingleton,
+    TargetEntityProbeWaitingCollections,
+    TargetEntityProbeReady
+};
+static TargetEntityProbeState gTargetEntityProbeState;
 /*目标 IPA 热更新实体管理器缓存：只保存 Class/FieldInfo 元数据，不缓存任何运行时实体指针。*/
 
 static BOOL ReadManagedCollectionCount(Il2CppObject *collection, NSUInteger *count) {
@@ -265,23 +273,38 @@ static BOOL ReadManagedCollectionCount(Il2CppObject *collection, NSUInteger *cou
 
 static BOOL ProbeTargetEntityCollections(void) {
     if (!EnsureIl2CppThread() || gIl2CppClassGetFieldFromName == NULL ||
-        gIl2CppFieldStaticGetValue == NULL || gIl2CppFieldGetValue == NULL) return NO;
+        gIl2CppFieldStaticGetValue == NULL || gIl2CppFieldGetValue == NULL) {
+        gTargetEntityProbeState = TargetEntityProbeWaitingAssembly;
+        return NO;
+    }
     if (gTargetEntityManagerKlass == NULL) {
         gTargetEntityManagerKlass = FindClassInAllAssemblies("", "OEPJBOIGGPO");
-        if (gTargetEntityManagerKlass == NULL) return NO;
+        if (gTargetEntityManagerKlass == NULL) {
+            gTargetEntityProbeState = TargetEntityProbeWaitingAssembly;
+            return NO;
+        }
     }
     if (gTargetActorTableField == NULL) {
         gTargetActorTableField = gIl2CppClassGetFieldFromName(gTargetEntityManagerKlass, "<DEFAKMKPGOL>k__BackingField");
         gTargetUgcTableField = gIl2CppClassGetFieldFromName(gTargetEntityManagerKlass, "NLMAFONOFFH");
         gTargetUgcMapTableField = gIl2CppClassGetFieldFromName(gTargetEntityManagerKlass, "IMDDIDNCIPO");
     }
-    if (gTargetActorTableField == NULL || gTargetUgcTableField == NULL || gTargetUgcMapTableField == NULL) return NO;
+    if (gTargetActorTableField == NULL || gTargetUgcTableField == NULL || gTargetUgcMapTableField == NULL) {
+        gTargetEntityProbeState = TargetEntityProbeWaitingFields;
+        return NO;
+    }
 
     Il2CppObject *manager = NULL;
     void *singletonField = gIl2CppClassGetFieldFromName(gTargetEntityManagerKlass, "BHOAGIJIMMJ");
-    if (singletonField == NULL) return NO;
+    if (singletonField == NULL) {
+        gTargetEntityProbeState = TargetEntityProbeWaitingFields;
+        return NO;
+    }
     gIl2CppFieldStaticGetValue(singletonField, &manager);
-    if (!ValidateInstanceOfClass(manager, gTargetEntityManagerKlass)) return NO;
+    if (!ValidateInstanceOfClass(manager, gTargetEntityManagerKlass)) {
+        gTargetEntityProbeState = TargetEntityProbeWaitingSingleton;
+        return NO;
+    }
 
     Il2CppObject *actorTable = NULL;
     Il2CppObject *ugcTable = NULL;
@@ -294,11 +317,15 @@ static BOOL ProbeTargetEntityCollections(void) {
     NSUInteger ugcMapCount = 0;
     if (!ReadManagedCollectionCount(actorTable, &actorCount) ||
         !ReadManagedCollectionCount(ugcTable, &ugcCount) ||
-        !ReadManagedCollectionCount(ugcMapTable, &ugcMapCount)) return NO;
+        !ReadManagedCollectionCount(ugcMapTable, &ugcMapCount)) {
+        gTargetEntityProbeState = TargetEntityProbeWaitingCollections;
+        return NO;
+    }
     gTargetActorCount = actorCount;
     gTargetUgcCount = ugcCount;
     gTargetUgcMapCount = ugcMapCount;
     gTargetEntityProbeReady = YES;
+    gTargetEntityProbeState = TargetEntityProbeReady;
     return YES;
 }
 /*热更新探针只通过 FieldInfo 与 Dictionary.get_Count 读取集合规模；不枚举条目、不保存实体地址、不修改游戏状态。*/
@@ -1734,16 +1761,24 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 /*判断是否有功能需要持续维持 */
 
 - (void)updateEngineStatus:(BOOL)connected {
-    NSInteger state = connected ? (gTargetEntityProbeReady ? 2 : 1) : 0;
+    NSInteger state = connected ? (NSInteger)gTargetEntityProbeState + 1 : 0;
     if (state == self.engineStatusState) return;
     self.engineStatusState = state;
     if (self.engineStatus == nil) return;
     if (connected) {
-        if (gTargetEntityProbeReady) {
+        if (gTargetEntityProbeState == TargetEntityProbeReady && gTargetEntityProbeReady) {
             self.engineStatus.text = [NSString stringWithFormat:@"引擎:实体 A%lu U%lu/%lu",
                                       (unsigned long)gTargetActorCount,
                                       (unsigned long)gTargetUgcCount,
                                       (unsigned long)gTargetUgcMapCount];
+        } else if (gTargetEntityProbeState == TargetEntityProbeWaitingAssembly) {
+            self.engineStatus.text = @"引擎:等待热更";
+        } else if (gTargetEntityProbeState == TargetEntityProbeWaitingFields) {
+            self.engineStatus.text = @"引擎:字段不匹配";
+        } else if (gTargetEntityProbeState == TargetEntityProbeWaitingSingleton) {
+            self.engineStatus.text = @"引擎:等待场景";
+        } else if (gTargetEntityProbeState == TargetEntityProbeWaitingCollections) {
+            self.engineStatus.text = @"引擎:集合未就绪";
         } else {
             self.engineStatus.text = @"引擎:已连接";
         }
