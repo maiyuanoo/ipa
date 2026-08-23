@@ -1128,4 +1128,340 @@ LAB_000079f4:
 
 
 
-/* Recovered functions: 5 */
+/* _YYGameMemoryPerformAsync at 00017038 */
+
+/* WARNING: Function: _objc_retain replaced with injection: _objc_retain_fixup */
+/* WARNING: Function: _objc_retainAutoreleasedReturnValue replaced with injection:
+   _objc_retain_fixup */
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+
+undefined8 _YYGameMemoryPerformAsync(long param_1)
+
+{
+  undefined8 uVar1;
+  
+  if (param_1 != 0) {
+    if (DAT_000e7238 != -1) {
+      thunk_FUN_0001bedc(param_1);
+    }
+    uVar1 = FUN_00017098();
+    _dispatch_async(uVar1,param_1);
+  }
+  return 0;
+}
+
+
+
+/* _YYGameMemorySetHighlight at 000170dc */
+
+void _YYGameMemorySetHighlight(float param_1,int param_2)
+
+{
+  char cVar1;
+  bool bVar2;
+  byte bVar3;
+  float fVar4;
+  
+  if (0x7f7fffff < (uint)ABS(param_1)) {
+    param_1 = 6.0;
+  }
+  fVar4 = 10.0;
+  if (param_1 <= 10.0) {
+    fVar4 = param_1;
+  }
+  DAT_000e67a8 = 1.0;
+  if (1.0 <= param_1) {
+    DAT_000e67a8 = fVar4;
+  }
+  do {
+    bVar3 = DAT_000e7260;
+    cVar1 = '\x01';
+    bVar2 = (bool)ExclusiveMonitorPass(0xe7260,0x10);
+    if (bVar2) {
+      cVar1 = ExclusiveMonitorsStatus();
+      DAT_000e7260 = param_2 != 0;
+    }
+  } while (cVar1 != '\0');
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  if (((param_2 != 0 ^ bVar3) & 1) != 0) {
+    FUN_00017184();
+    return;
+  }
+  return;
+}
+
+
+
+/* _YYGameMemorySetFogRemoval at 000171d4 */
+
+void _YYGameMemorySetFogRemoval(int param_1)
+
+{
+  DAT_000e7278 = param_1 != 0;
+  if (DAT_000e7238 == -1) {
+    return;
+  }
+  thunk_FUN_0001bedc();
+  return;
+}
+
+
+
+/* _YYGameMemorySetCoffinReveal at 00017210 */
+
+void _YYGameMemorySetCoffinReveal(int param_1)
+
+{
+  char cVar1;
+  bool bVar2;
+  byte bVar3;
+  
+  do {
+    bVar3 = DAT_000e7279;
+    cVar1 = '\x01';
+    bVar2 = (bool)ExclusiveMonitorPass(0xe7279,0x10);
+    if (bVar2) {
+      cVar1 = ExclusiveMonitorsStatus();
+      DAT_000e7279 = param_1 != 0;
+    }
+  } while (cVar1 != '\0');
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  if (((param_1 != 0 ^ bVar3) & 1) == 0) {
+    return;
+  }
+  FUN_00017184();
+  return;
+}
+
+
+
+/* _YYGameMemorySetThirdPersonFOVEnabled at 00017278 */
+
+void _YYGameMemorySetThirdPersonFOVEnabled(int param_1)
+
+{
+  DAT_000e727a = param_1 != 0;
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  DAT_000e7441 = 1;
+  FUN_00019cf0();
+  return;
+}
+
+
+
+/* _YYGameMemorySetThirdPersonFOV at 000172c4 */
+
+void _YYGameMemorySetThirdPersonFOV(float param_1)
+
+{
+  float fVar1;
+  
+  if (0x7f7fffff < (uint)ABS(param_1)) {
+    param_1 = 44.0;
+  }
+  fVar1 = 170.0;
+  if (param_1 <= 170.0) {
+    fVar1 = param_1;
+  }
+  DAT_000e67b8 = 30.0;
+  if (30.0 <= param_1) {
+    DAT_000e67b8 = fVar1;
+  }
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  DAT_000e7441 = 1;
+  FUN_00019cf0();
+  return;
+}
+
+
+
+/* _YYGameMemorySetFirstPersonFOVEnabled at 00017344 */
+
+void _YYGameMemorySetFirstPersonFOVEnabled(int param_1)
+
+{
+  DAT_000e727b = param_1 != 0;
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  DAT_000e7441 = 1;
+  FUN_00019cf0();
+  return;
+}
+
+
+
+/* _YYGameMemorySetFirstPersonFOV at 00017390 */
+
+void _YYGameMemorySetFirstPersonFOV(float param_1)
+
+{
+  float fVar1;
+  
+  if (0x7f7fffff < (uint)ABS(param_1)) {
+    param_1 = 66.0;
+  }
+  fVar1 = 170.0;
+  if (param_1 <= 170.0) {
+    fVar1 = param_1;
+  }
+  DAT_000e67bc = 30.0;
+  if (30.0 <= param_1) {
+    DAT_000e67bc = fVar1;
+  }
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  DAT_000e7441 = 1;
+  FUN_00019cf0();
+  return;
+}
+
+
+
+/* _YYGameMemorySetGlobalSpeed at 00017410 */
+
+void _YYGameMemorySetGlobalSpeed(float param_1,int param_2)
+
+{
+  float fVar1;
+  
+  if (0x7f7fffff < (uint)ABS(param_1)) {
+    param_1 = 1.5;
+  }
+  fVar1 = 10.0;
+  if (param_1 <= 10.0) {
+    fVar1 = param_1;
+  }
+  DAT_000e67c0 = 1.0;
+  if (1.0 <= param_1) {
+    DAT_000e67c0 = fVar1;
+  }
+  DAT_000e727c = param_2 != 0;
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  DAT_000e7441 = 1;
+  FUN_00019cf0();
+  return;
+}
+
+
+
+/* _YYGameMemorySetDemagnetization at 0001749c */
+
+void _YYGameMemorySetDemagnetization(float param_1,int param_2)
+
+{
+  float fVar1;
+  float fVar2;
+  
+  fVar2 = param_1 / 100.0;
+  if (0x7f7fffff < (uint)ABS(param_1)) {
+    fVar2 = 1.0;
+  }
+  fVar1 = 1.0;
+  if (fVar2 <= 1.0) {
+    fVar1 = fVar2;
+  }
+  DAT_000e67c4 = 0.0;
+  if (0.0 <= fVar2) {
+    DAT_000e67c4 = fVar1;
+  }
+  DAT_000e727d = param_2 != 0;
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  DAT_000e7441 = 1;
+  FUN_00019cf0();
+  return;
+}
+
+
+
+/* _YYGameMemoryDemagnetizationAdjustedCount at 00017530 */
+
+undefined4 _YYGameMemoryDemagnetizationAdjustedCount(void)
+
+{
+  return DAT_000e7280;
+}
+
+
+
+/* _YYGameMemoryShutdown at 00017540 */
+
+/* WARNING: Function: _objc_retainAutoreleasedReturnValue replaced with injection:
+   _objc_retain_fixup */
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+
+undefined8 _YYGameMemoryShutdown(void)
+
+{
+  undefined *puVar1;
+  ID IVar2;
+  undefined *puVar3;
+  undefined8 uVar4;
+  
+  DAT_000e7260 = 0;
+  DAT_000e7278 = 0;
+  DAT_000e7279 = 0;
+  DAT_000e727a = 0;
+  DAT_000e727b = 0;
+  DAT_000e727c = 0;
+  DAT_000e727d = 0;
+  if (DAT_000e7238 != -1) {
+    thunk_FUN_0001bedc();
+  }
+  if (DAT_000e7288 != -1) {
+    thunk_FUN_0001bef0();
+  }
+  DAT_000e7290 = 0;
+  _dispatch_source_set_timer(DAT_000e7170,0xffffffffffffffff,0xffffffffffffffff,0);
+  IVar2 = NSThread::isMainThread((ID)PTR__OBJC_CLASS___NSThread_000e6148);
+  if ((int)IVar2 == 0) {
+    _dispatch_sync(PTR___dispatch_main_q_000e04b0,&PTR___NSConcreteGlobalBlock_000e11f0);
+  }
+  else {
+    FUN_00017720(1);
+    DAT_000e7441 = 0;
+  }
+  puVar1 = PTR_LOOP_000e67b0;
+  puVar3 = _dispatch_get_specific(PTR_LOOP_000e67b0);
+  if (puVar3 == puVar1) {
+    FUN_000195a8();
+  }
+  else {
+    uVar4 = FUN_00019de8();
+    _dispatch_sync(uVar4,&PTR___NSConcreteGlobalBlock_000e1210);
+  }
+  puVar1 = PTR_LOOP_000e67a0;
+  puVar3 = _dispatch_get_specific(PTR_LOOP_000e67a0);
+  if (puVar3 != puVar1) {
+    uVar4 = FUN_00017098();
+    _dispatch_sync(uVar4,&PTR___NSConcreteGlobalBlock_000e1230);
+    return 0;
+  }
+  _CACurrentMediaTime();
+  uVar4 = FUN_00019afc();
+  DAT_000e7480 = 0;
+  DAT_000e7488 = 0;
+  DAT_000e748c = 0;
+  DAT_000e7490 = 0;
+  DAT_000e7498 = 0;
+  DAT_000e749c = 0;
+  DAT_000e7230 = 0;
+  return uVar4;
+}
+
+
+
+/* Recovered functions: 17 */
