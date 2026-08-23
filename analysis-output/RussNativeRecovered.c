@@ -2461,6 +2461,16 @@ undefined8 * FUN_00009690(undefined8 *param_1,ulong param_2,long param_3,undefin
 
 
 
+/* FUN_00009708 at 00009708 */
+
+void FUN_00009708(void)
+
+{
+  return;
+}
+
+
+
 /* _YYGameMemoryPerformAsync at 00017038 */
 
 /* WARNING: Function: _objc_retain replaced with injection: _objc_retain_fixup */
@@ -6312,4 +6322,4 @@ void FUN_0003ee20(void)
 
 
 
-/* Recovered functions: 96 */
+/* Recovered functions: 97 */
