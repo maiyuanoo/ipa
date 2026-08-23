@@ -457,20 +457,33 @@ static float gOriginalFogDensity = 0.01f;
 static uintptr_t gFogStateAddresses[2];
 static uint32_t gFogStateOriginalValues[2];
 static BOOL gNativeFogStateSaved;
+typedef kern_return_t (*MachVmReadOverwrite)(mach_port_t task, mach_vm_address_t address,
+                                             mach_vm_size_t size, mach_vm_address_t data,
+                                             mach_vm_size_t *outSize);
+typedef kern_return_t (*VmWrite)(vm_map_t task, vm_address_t address,
+                                 vm_offset_t data, mach_msg_type_number_t dataCount);
+static MachVmReadOverwrite gMachVmReadOverwrite;
+static VmWrite gVmWrite;
 /*RenderSettings 后备路径和 Russ 原版 Unity 内存状态缓存*/
 
 static BOOL ReadProcessMemory(uintptr_t address, void *output, size_t length) {
     if (address < 0x10000 || output == NULL || length == 0) return NO;
+    if (gMachVmReadOverwrite == NULL) {
+        gMachVmReadOverwrite = (MachVmReadOverwrite)dlsym(RTLD_DEFAULT, "mach_vm_read_overwrite");
+    }
+    if (gMachVmReadOverwrite == NULL) return NO;
     mach_vm_size_t copied = 0;
-    kern_return_t result = mach_vm_read_overwrite(mach_task_self(), (mach_vm_address_t)address,
-                                                  (mach_vm_size_t)length, (mach_vm_address_t)output, &copied);
+    kern_return_t result = gMachVmReadOverwrite(mach_task_self(), (mach_vm_address_t)address,
+                                                (mach_vm_size_t)length, (mach_vm_address_t)output, &copied);
     return result == KERN_SUCCESS && copied == length;
 }
 
 static BOOL WriteProcessMemory(uintptr_t address, const void *input, size_t length) {
     if (address < 0x10000 || input == NULL || length == 0) return NO;
-    return mach_vm_write(mach_task_self(), (mach_vm_address_t)address,
-                         (vm_offset_t)input, (mach_msg_type_number_t)length) == KERN_SUCCESS;
+    if (gVmWrite == NULL) gVmWrite = (VmWrite)dlsym(RTLD_DEFAULT, "vm_write");
+    if (gVmWrite == NULL) return NO;
+    return gVmWrite(mach_task_self(), (vm_address_t)address,
+                    (vm_offset_t)input, (mach_msg_type_number_t)length) == KERN_SUCCESS;
 }
 
 static BOOL ResolveUnityPointerChain(const uintptr_t *offsets, size_t count, uintptr_t *result) {
