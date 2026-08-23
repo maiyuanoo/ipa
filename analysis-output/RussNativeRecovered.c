@@ -4751,4 +4751,48 @@ void FUN_0001be30(ulong *param_1,ulong param_2)
 
 
 
-/* Recovered functions: 61 */
+/* FUN_0001bedc at 0001bedc */
+
+void FUN_0001bedc(void)
+
+{
+  _dispatch_once(&DAT_000e7238,&PTR___NSConcreteGlobalBlock_000e1250);
+  return;
+}
+
+
+
+/* FUN_0001bef0 at 0001bef0 */
+
+void FUN_0001bef0(void)
+
+{
+  _dispatch_once(&DAT_000e7288,&PTR___NSConcreteGlobalBlock_000e1310);
+  return;
+}
+
+
+
+/* FUN_0003ee08 at 0003ee08 */
+
+void FUN_0003ee08(void)
+
+{
+  _dispatch_once(&DAT_000e7258,&PTR___NSConcreteGlobalBlock_000e12b0);
+  return;
+}
+
+
+
+/* FUN_0003ee20 at 0003ee20 */
+
+void FUN_0003ee20(void)
+
+{
+  _dispatch_once(&DAT_000e7270,&PTR___NSConcreteGlobalBlock_000e12f0);
+  return;
+}
+
+
+
+/* Recovered functions: 65 */
