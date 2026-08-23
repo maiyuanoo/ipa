@@ -44,7 +44,9 @@ public class RecoverNative extends GhidraScript {
             entryOffset == 0x1b7bcL || entryOffset == 0x1b968L ||
             entryOffset == 0x1ba54L || entryOffset == 0x1bb90L ||
             entryOffset == 0x1bce4L || entryOffset == 0x1bd94L ||
-            entryOffset == 0x1be30L;
+            entryOffset == 0x1be30L || entryOffset == 0x1bedcL ||
+            entryOffset == 0x1bef0L || entryOffset == 0x3ee08L ||
+            entryOffset == 0x3ee20L;
     }
 
     private Set<Long> getBlockInvokeOffsets() throws Exception {
