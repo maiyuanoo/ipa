@@ -215,6 +215,10 @@ static void *gCameraFollowKlass;
 static void *gCameraFollowFieldKlass;
 static void *gUGC2FOVField;
 static void *gUGC2FirstFOVField;
+static BOOL gThirdPersonFovSaved;
+static BOOL gFirstPersonFovSaved;
+static float gOriginalThirdPersonFov;
+static float gOriginalFirstPersonFov;
 /*camerafollow类/字段句柄缓存(fieldinfo属于静态元数据不会被GC 照原版field_get_offset后直写等价)*/
 
 static BOOL ValidateInstanceOfClass(Il2CppObject *instance, void *klass) {
@@ -265,7 +269,27 @@ static Il2CppObject *GetCameraFollowInstance(void) {
 }
 /*camerafollow单例获取:静态字段→get_instance 双路径照原版顺序 每次现取不缓存实例防GC后野指针*/
 
-static BOOL ApplyCameraFollow(float thirdPersonFov, float firstPersonFov) {
+static BOOL ReadCameraFollowFloat(Il2CppObject *instance, void *field, float *value) {
+    if (instance == NULL || field == NULL || value == NULL || gIl2CppFieldGetValue == NULL) return NO;
+    gIl2CppFieldGetValue(instance, field, value);
+    return isfinite(*value);
+}
+
+static BOOL WriteCameraFollowFloat(Il2CppObject *instance, void *field, float value) {
+    if (instance == NULL || field == NULL || !isfinite(value)) return NO;
+    if (gIl2CppFieldSetValue != NULL) {
+        gIl2CppFieldSetValue(instance, field, &value);
+        return YES;
+    }
+    if (gIl2CppFieldGetOffset == NULL) return NO;
+    size_t offset = gIl2CppFieldGetOffset(field);
+    if (offset < sizeof(Il2CppObject)) return NO;
+    *(float *)((uint8_t *)instance + offset) = value;
+    return YES;
+}
+
+static BOOL ApplyCameraFollow(float thirdPersonFov, BOOL thirdPersonEnabled,
+                              float firstPersonFov, BOOL firstPersonEnabled) {
     if (!EnsureIl2CppThread()) return NO;
     Il2CppObject *instance = GetCameraFollowInstance();
     if (instance == NULL) return NO;
@@ -277,31 +301,41 @@ static BOOL ApplyCameraFollow(float thirdPersonFov, float firstPersonFov) {
         gCameraFollowFieldKlass = objKlass;
         gUGC2FOVField = gIl2CppClassGetFieldFromName(objKlass, "UGC2FOV");
         gUGC2FirstFOVField = gIl2CppClassGetFieldFromName(objKlass, "UGC2FirstFOV");
+        gThirdPersonFovSaved = NO;
+        gFirstPersonFovSaved = NO;
     }
     if (gUGC2FOVField == NULL && gUGC2FirstFOVField == NULL) return NO;
 
-    float firstValue = (float)MAX(30.0, MIN(170.0, firstPersonFov));
-    float thirdValue = (float)MAX(30.0, MIN(170.0, thirdPersonFov));
-    if (gIl2CppFieldSetValue != NULL) {
-        if (gUGC2FirstFOVField != NULL) gIl2CppFieldSetValue(instance, gUGC2FirstFOVField, &firstValue);
-        if (gUGC2FOVField != NULL) gIl2CppFieldSetValue(instance, gUGC2FOVField, &thirdValue);
-        return YES;
-    }
-    /* 后备:field_get_offset+同进程直写(等价原版vm_write方案) */
-    if (gIl2CppFieldGetOffset != NULL) {
-        if (gUGC2FirstFOVField != NULL) {
-            size_t offset = gIl2CppFieldGetOffset(gUGC2FirstFOVField);
-            *(float *)((uint8_t *)instance + offset) = firstValue;
+    BOOL changed = NO;
+    if (gUGC2FOVField != NULL) {
+        if (thirdPersonEnabled) {
+            if (!gThirdPersonFovSaved && ReadCameraFollowFloat(instance, gUGC2FOVField, &gOriginalThirdPersonFov)) {
+                gThirdPersonFovSaved = YES;
+            }
+            if (gThirdPersonFovSaved) {
+                changed |= WriteCameraFollowFloat(instance, gUGC2FOVField, (float)MAX(30.0, MIN(170.0, thirdPersonFov)));
+            }
+        } else if (gThirdPersonFovSaved) {
+            changed |= WriteCameraFollowFloat(instance, gUGC2FOVField, gOriginalThirdPersonFov);
+            gThirdPersonFovSaved = NO;
         }
-        if (gUGC2FOVField != NULL) {
-            size_t offset = gIl2CppFieldGetOffset(gUGC2FOVField);
-            *(float *)((uint8_t *)instance + offset) = thirdValue;
-        }
-        return YES;
     }
-    return NO;
+    if (gUGC2FirstFOVField != NULL) {
+        if (firstPersonEnabled) {
+            if (!gFirstPersonFovSaved && ReadCameraFollowFloat(instance, gUGC2FirstFOVField, &gOriginalFirstPersonFov)) {
+                gFirstPersonFovSaved = YES;
+            }
+            if (gFirstPersonFovSaved) {
+                changed |= WriteCameraFollowFloat(instance, gUGC2FirstFOVField, (float)MAX(30.0, MIN(170.0, firstPersonFov)));
+            }
+        } else if (gFirstPersonFovSaved) {
+            changed |= WriteCameraFollowFloat(instance, gUGC2FirstFOVField, gOriginalFirstPersonFov);
+            gFirstPersonFovSaved = NO;
+        }
+    }
+    return changed;
 }
-/*camerafollow.ugc2fov/ugc2firstfov字段直写 原版每tick写两字段+clamp[30,170] 完全对齐*/
+/*原版分别保存并恢复 UGC2FOV/UGC2FirstFOV；仅对启用字段持续写入，范围 [30,170]。*/
 
 static void *gCameraKlass;
 static const MethodInfo *gGetAllCamerasMethod;
@@ -1156,7 +1190,7 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
     [center addObserver:self selector:@selector(pauseOverlayRendering) name:UIApplicationWillResignActiveNotification object:nil];
     [center addObserver:self selector:@selector(pauseOverlayRendering) name:UIApplicationDidEnterBackgroundNotification object:nil];
-    [center addObserver:self selector:@selector(pauseOverlayRendering) name:UIApplicationWillTerminateNotification object:nil];
+    [center addObserver:self selector:@selector(shutdownFeatureRuntime) name:UIApplicationWillTerminateNotification object:nil];
     [center addObserver:self selector:@selector(resumeOverlayRendering) name:UIApplicationDidBecomeActiveNotification object:nil];
 }
 /*对齐辞月 hookui_pauseRendering/hookui_resumeRendering：失焦、后台、终止均暂停帧回调，回前台后恢复*/
@@ -1166,6 +1200,19 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     self.coffinDisplayLink.paused = YES;
     self.routeDisplayLink.paused = YES;
 }
+
+- (void)shutdownFeatureRuntime {
+    [self pauseOverlayRendering];
+    ApplyHighlight(NO, 1.0f);
+    ApplyCoffinReveal(NO);
+    ApplyFogRemoval(NO);
+    ApplyDemagnetization(0.0f);
+    ApplyTimeScale(1.0f);
+    ApplyCameraFollow(0.0f, NO, 0.0f, NO);
+    [self stopCoffinMarkers];
+    [self stopIslandRouteOverlay];
+}
+/*对齐 _YYGameMemoryShutdown：终止时撤销本 dylib 修改的状态并释放覆盖层对象。*/
 
 - (void)resumeOverlayRendering {
     self.runtimeDisplayLink.paused = NO;
@@ -1559,7 +1606,8 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
         [self setCardHint:key text:enabled ? @"雾效已关闭" : @"雾效已恢复"];
     } else if ([key isEqualToString:@"wide"]) {
         CGFloat thirdFOV = enabled ? 66.0 : [self sliderValueForKey:@"thirdPersonFOV"];
-        ApplyCameraFollow((float)thirdFOV, (float)[self sliderValueForKey:@"firstPersonFOV"]);
+        CGFloat firstFOV = [self sliderValueForKey:@"firstPersonFOV"];
+        ApplyCameraFollow((float)thirdFOV, enabled, (float)firstFOV, firstFOV != 75.0);
         [self setCardHint:key text:enabled ? @"已调整角色相机视角" : @"已恢复角色相机视角"];
     } else if ([key isEqualToString:@"islandRoute"]) {
         NSUInteger count = SetIslandRouteVisible(enabled);
@@ -1662,7 +1710,8 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 
     if ([self.featureStates[@"fog"] boolValue]) ApplyFogRemoval(YES);
     if (speed != 1.0) ApplyTimeScale((float)speed);
-    ApplyCameraFollow((float)(wide ? 66.0 : thirdFOV), (float)firstFOV);
+    ApplyCameraFollow((float)(wide ? 66.0 : thirdFOV), wide || thirdFOV != 75.0,
+                      (float)firstFOV, firstFOV != 75.0);
     if (heavyTick) {
         if ([self.featureStates[@"highlight"] boolValue]) ApplyHighlight(YES, 2.5f);
         if ([self.featureStates[@"demagnetization"] boolValue]) ApplyDemagnetization([self sliderValueForKey:@"demagnetization"]);
@@ -1872,7 +1921,11 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
     if ([self.featureStates[@"islandRoute"] boolValue]) {
         [self startIslandRouteOverlay];
     }
-    ApplyCameraFollow([self sliderValueForKey:@"thirdPersonFOV"], [self sliderValueForKey:@"firstPersonFOV"]);
+    CGFloat thirdFOV = [self sliderValueForKey:@"thirdPersonFOV"];
+    CGFloat firstFOV = [self sliderValueForKey:@"firstPersonFOV"];
+    BOOL wide = [self.featureStates[@"wide"] boolValue];
+    ApplyCameraFollow((float)(wide ? 66.0 : thirdFOV), wide || thirdFOV != 75.0,
+                      (float)firstFOV, firstFOV != 75.0);
     ApplyTimeScale([self sliderValueForKey:@"globalSpeed"]);
 }
 /*启动恢复 有功能开着引擎60帧维持(热更程序集加载后自动补上) 照原版restorefeatureruntime */
