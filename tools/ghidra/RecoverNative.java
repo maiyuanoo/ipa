@@ -51,8 +51,9 @@ public class RecoverNative extends GhidraScript {
 
     private Set<Long> getBlockInvokeOffsets() throws Exception {
         long[] blockOffsets = {
-            0xe11f0L, 0xe1210L, 0xe1230L, 0xe1250L, 0xe1290L,
-            0xe12b0L, 0xe12d0L, 0xe12f0L, 0xe1310L
+            0xe11f0L, 0xe1210L, 0xe1230L, 0xe1250L, 0xe1270L,
+            0xe1290L, 0xe12b0L, 0xe12d0L, 0xe12f0L, 0xe1310L,
+            0xe1330L
         };
         Memory memory = currentProgram.getMemory();
         Set<Long> invokeOffsets = new HashSet<Long>();
