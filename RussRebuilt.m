@@ -26,6 +26,7 @@ typedef size_t (*Il2CppFieldGetOffset)(void *field);
 typedef void (*Il2CppFieldSetValue)(void *object, void *field, void *value);
 typedef Il2CppObject *(*Il2CppRuntimeInvoke)(const MethodInfo *method, void *object, void **parameters, Il2CppObject **exception);
 typedef void *(*Il2CppThreadAttach)(Il2CppDomain *domain);
+typedef Il2CppObject *(*Il2CppClassGetTypeObject)(void *klass);
 /*ilcpp定义指针 dlsym调用 */
 static Il2CppDomainGet gIl2CppDomainGet;
 static Il2CppDomainGetAssemblies gIl2CppDomainGetAssemblies;
@@ -37,6 +38,7 @@ static Il2CppFieldGetOffset gIl2CppFieldGetOffset;
 static Il2CppFieldSetValue gIl2CppFieldSetValue;
 static Il2CppRuntimeInvoke gIl2CppRuntimeInvoke;
 static Il2CppThreadAttach gIl2CppThreadAttach;
+static Il2CppClassGetTypeObject gIl2CppClassGetTypeObject;
 /*全局静态函数指针缓存 */
 static BOOL ResolveIl2Cpp(void) {
     if (gIl2CppDomainGet != NULL) {
@@ -53,6 +55,7 @@ static BOOL ResolveIl2Cpp(void) {
     gIl2CppFieldSetValue = (Il2CppFieldSetValue)dlsym(RTLD_DEFAULT, "il2cpp_field_set_value");
     gIl2CppRuntimeInvoke = (Il2CppRuntimeInvoke)dlsym(RTLD_DEFAULT, "il2cpp_runtime_invoke");
     gIl2CppThreadAttach = (Il2CppThreadAttach)dlsym(RTLD_DEFAULT, "il2cpp_thread_attach");
+    gIl2CppClassGetTypeObject = (Il2CppClassGetTypeObject)dlsym(RTLD_DEFAULT, "il2cpp_class_get_type_object");
 
     return gIl2CppDomainGet != NULL && gIl2CppDomainGetAssemblies != NULL &&
         gIl2CppAssemblyGetImage != NULL && gIl2CppClassFromName != NULL &&
@@ -139,6 +142,52 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     }
 }
 /*直接调用unityengine camera改fov */
+static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
+    if (!ResolveIl2Cpp()) return 0;
+    Il2CppDomain *domain = gIl2CppDomainGet();
+    if (domain == NULL) return 0;
+    if (gIl2CppThreadAttach != NULL) gIl2CppThreadAttach(domain);
+
+    size_t assemblyCount = 0;
+    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
+    void *monoKlass = NULL;
+    void *objectKlass = NULL;
+    void *behaviourKlass = NULL;
+    for (size_t index = 0; index < assemblyCount; index++) {
+        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
+        if (monoKlass == NULL) monoKlass = gIl2CppClassFromName(image, "UnityEngine", "MonoBehaviour");
+        if (objectKlass == NULL) objectKlass = gIl2CppClassFromName(image, "UnityEngine", "Object");
+        if (behaviourKlass == NULL) behaviourKlass = gIl2CppClassFromName(image, "UnityEngine", "Behaviour");
+        if (monoKlass != NULL && objectKlass != NULL && behaviourKlass != NULL) break;
+    }
+    if (monoKlass == NULL || objectKlass == NULL || behaviourKlass == NULL) return 0;
+    if (gIl2CppClassGetTypeObject == NULL) return 0;
+
+    Il2CppObject *typeObject = gIl2CppClassGetTypeObject(monoKlass);
+    if (typeObject == NULL) return 0;
+
+    const MethodInfo *findMethod = gIl2CppClassGetMethodFromName(objectKlass, "FindObjectsOfType", 1);
+    const MethodInfo *setEnabled = gIl2CppClassGetMethodFromName(behaviourKlass, "set_enabled", 1);
+    if (findMethod == NULL || setEnabled == NULL) return 0;
+
+    Il2CppObject *exception = NULL;
+    void *findArgs[] = { &typeObject };
+    Il2CppArray *result = (Il2CppArray *)gIl2CppRuntimeInvoke(findMethod, NULL, findArgs, &exception);
+    if (exception != NULL || result == NULL) return 0;
+
+    BOOL value = enable ? YES : NO;
+    void *enableArgs[] = { &value };
+    NSUInteger touched = 0;
+    for (uintptr_t index = 0; index < result->maxLength; index++) {
+        Il2CppObject *behaviour = result->objects[index];
+        if (behaviour == NULL) continue;
+        exception = NULL;
+        gIl2CppRuntimeInvoke(setEnabled, behaviour, enableArgs, &exception);
+        if (exception == NULL) touched++;
+    }
+    return touched;
+}
+/*object.findsoftype(typeof(monobehaviour))扫描全部组件 behaviour.set_enabled手动开关 */
 @interface RussOverlayController : NSObject
 @property(nonatomic, strong) UIView *panel;
 @property(nonatomic, strong) UIButton *floatingButton;
@@ -147,6 +196,8 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 @property(nonatomic, assign) CGFloat speedMultiplier;
 @property(nonatomic, assign) CGFloat cameraDistance;
 @property(nonatomic, assign) BOOL routeEnabled;
+@property(nonatomic, assign) BOOL componentsEnabled;
+@property(nonatomic, strong) UILabel *componentsHint;
 @end
 /* 悬浮ui控制器*/
 @implementation RussOverlayController
@@ -179,7 +230,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 }
 /* ui初始化入口*/
 - (void)buildPanelInWindow:(UIWindow *)window {
-    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 130.0, 280.0, 300.0)];
+    self.panel = [[UIView alloc] initWithFrame:CGRectMake(84.0, 130.0, 280.0, 360.0)];
     self.panel.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
     self.panel.layer.cornerRadius = 8.0;
     self.panel.hidden = YES;
@@ -207,6 +258,23 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     routeLabel.textColor = UIColor.whiteColor;
     routeLabel.font = [UIFont systemFontOfSize:14.0];
     [self.panel addSubview:routeLabel];
+
+    UISwitch *componentsSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 295.0, 0.0, 0.0)];
+    componentsSwitch.on = self.componentsEnabled;
+    [componentsSwitch addTarget:self action:@selector(componentsChanged:) forControlEvents:UIControlEventValueChanged];
+    [self.panel addSubview:componentsSwitch];
+
+    UILabel *componentsLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 297.0, 150.0, 28.0)];
+    componentsLabel.text = @"组件手动开启";
+    componentsLabel.textColor = UIColor.whiteColor;
+    componentsLabel.font = [UIFont systemFontOfSize:14.0];
+    [self.panel addSubview:componentsLabel];
+
+    self.componentsHint = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 327.0, 248.0, 18.0)];
+    self.componentsHint.text = @"（FindObjectsOfType 待扫描）";
+    self.componentsHint.textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
+    self.componentsHint.font = [UIFont systemFontOfSize:11.0];
+    [self.panel addSubview:self.componentsHint];
     [window addSubview:self.panel];
 }
 /* 深色半透明面板 标题视角调试 调用addsliderwithtitle快速生成3个滑块第一人fov第三人fov 速度倍率 路线显示 面板加在顶层window*/
@@ -255,7 +323,13 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
 - (void)thirdPersonFOVChanged:(UISlider *)sender { self.thirdPersonFOV = sender.value; [self saveSettings]; ApplyCameraFollow(self.thirdPersonFOV, self.firstPersonFOV); }
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; }
 - (void)routeChanged:(UISwitch *)sender { self.routeEnabled = sender.isOn; [self saveSettings]; }
-/*fov滑块拖动 更新成员变量 savesetting永久化 立刻调用applycamerafollow刷新游戏视角 速度路线只存配置没有底层ilcapp逻辑 */
+- (void)componentsChanged:(UISwitch *)sender {
+    self.componentsEnabled = sender.isOn;
+    [self saveSettings];
+    NSUInteger count = EnableAllMonoBehaviours(sender.isOn);
+    self.componentsHint.text = [NSString stringWithFormat:@"（FindObjectsOfType 已%@ %lu 个）", sender.isOn ? @"启用" : @"禁用", (unsigned long)count];
+}
+/*fov滑块拖动 更新成员变量 savesetting永久化 立刻调用applycamerafollow刷新游戏视角 速度路线只存配置没有底层ilcapp逻辑 组件开关扫描monobehaviour并set_enabled */
 - (void)loadSettings {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     self.firstPersonFOV = [defaults objectForKey:@"russ.firstFOV"] ? [defaults floatForKey:@"russ.firstFOV"] : 75.0;
@@ -263,6 +337,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     self.speedMultiplier = [defaults objectForKey:@"russ.speed"] ? [defaults floatForKey:@"russ.speed"] : 1.0;
     self.cameraDistance = [defaults objectForKey:@"russ.distance"] ? [defaults floatForKey:@"russ.distance"] : 8.0;
     self.routeEnabled = [defaults boolForKey:@"russ.route"];
+    self.componentsEnabled = [defaults boolForKey:@"russ.components"];
 }
 /* 加载本地持久化配置 从系统nsuserdefaults读取上次保存参数 不存在设置的默认值*/
 - (void)saveSettings {
@@ -272,6 +347,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     [defaults setFloat:self.speedMultiplier forKey:@"russ.speed"];
     [defaults setFloat:self.cameraDistance forKey:@"russ.distance"];
     [defaults setBool:self.routeEnabled forKey:@"russ.route"];
+    [defaults setBool:self.componentsEnabled forKey:@"russ.components"];
 }
 /* 保存配置到本地 下次打开延用fov*/
 @end
