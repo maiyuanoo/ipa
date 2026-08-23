@@ -1,0 +1,49 @@
+openjdk version "21.0.11" 2026-04-21 LTS
+OpenJDK Runtime Environment Temurin-21.0.11+10 (build 21.0.11+10-LTS)
+OpenJDK 64-Bit Server VM Temurin-21.0.11+10 (build 21.0.11+10-LTS, mixed mode)
+INFO  Using log config file: jar:file:/Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /Users/runner/Library/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /Users/runner/Library/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (828 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
+INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
+INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
+INFO  Headless startup complete (8085 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
+    /Users/runner/work/ipa/ipa/tools/ghidra
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SwiftDemangler/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
+    /Users/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: /Users/runner/work/_temp/ghidra-project/RussRecovery (HeadlessAnalyzer)  
+ERROR Abort due to Headless analyzer error: Directory not found: /Users/runner/work/_temp/ghidra-project (HeadlessAnalyzer) java.io.FileNotFoundException: Directory not found: /Users/runner/work/_temp/ghidra-project
+	at ghidra.framework.project.DefaultProjectManager.createProject(DefaultProjectManager.java:100)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processLocal(HeadlessAnalyzer.java:439)
+	at ghidra.app.util.headless.AnalyzeHeadless.launch(AnalyzeHeadless.java:199)
+	at ghidra.GhidraLauncher.launch(GhidraLauncher.java:81)
+	at ghidra.Ghidra.main(Ghidra.java:54)
+ 
