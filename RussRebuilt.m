@@ -235,101 +235,6 @@ static BOOL ValidateInstanceOfClass(Il2CppObject *instance, void *klass) {
 }
 /*实例类校验:对象头class指针匹配或父类链匹配 防野指针/错拿*/
 
-static void *gTargetEntityManagerKlass;
-static void *gTargetActorTableField;
-static void *gTargetUgcTableField;
-static void *gTargetUgcMapTableField;
-static NSUInteger gTargetActorCount;
-static NSUInteger gTargetUgcCount;
-static NSUInteger gTargetUgcMapCount;
-static BOOL gTargetEntityProbeReady;
-typedef NS_ENUM(NSInteger, TargetEntityProbeState) {
-    TargetEntityProbeWaitingAssembly = 0,
-    TargetEntityProbeWaitingFields,
-    TargetEntityProbeWaitingSingleton,
-    TargetEntityProbeWaitingCollections,
-    TargetEntityProbeReady
-};
-static TargetEntityProbeState gTargetEntityProbeState;
-/*目标 IPA 热更新实体管理器缓存：只保存 Class/FieldInfo 元数据，不缓存任何运行时实体指针。*/
-
-static BOOL ReadManagedCollectionCount(Il2CppObject *collection, NSUInteger *count) {
-    if (collection == NULL || count == NULL || gIl2CppClassGetMethodFromName == NULL ||
-        gIl2CppRuntimeInvoke == NULL || gIl2CppObjectUnbox == NULL) return NO;
-    void *collectionKlass = *(void **)collection;
-    if (collectionKlass == NULL) return NO;
-    const MethodInfo *getCount = gIl2CppClassGetMethodFromName(collectionKlass, "get_Count", 0);
-    if (getCount == NULL) return NO;
-    Il2CppObject *exception = NULL;
-    Il2CppObject *boxedCount = gIl2CppRuntimeInvoke(getCount, collection, NULL, &exception);
-    if (exception != NULL || boxedCount == NULL) return NO;
-    int32_t *unboxedCount = (int32_t *)gIl2CppObjectUnbox(boxedCount);
-    if (unboxedCount == NULL) return NO;
-    int32_t value = *unboxedCount;
-    if (value < 0 || value > 100000) return NO;
-    *count = (NSUInteger)value;
-    return YES;
-}
-
-static BOOL ProbeTargetEntityCollections(void) {
-    if (!EnsureIl2CppThread() || gIl2CppClassGetFieldFromName == NULL ||
-        gIl2CppFieldStaticGetValue == NULL || gIl2CppFieldGetValue == NULL) {
-        gTargetEntityProbeState = TargetEntityProbeWaitingAssembly;
-        return NO;
-    }
-    if (gTargetEntityManagerKlass == NULL) {
-        gTargetEntityManagerKlass = FindClassInAllAssemblies("", "OEPJBOIGGPO");
-        if (gTargetEntityManagerKlass == NULL) {
-            gTargetEntityProbeState = TargetEntityProbeWaitingAssembly;
-            return NO;
-        }
-    }
-    if (gTargetActorTableField == NULL) {
-        gTargetActorTableField = gIl2CppClassGetFieldFromName(gTargetEntityManagerKlass, "<DEFAKMKPGOL>k__BackingField");
-        gTargetUgcTableField = gIl2CppClassGetFieldFromName(gTargetEntityManagerKlass, "NLMAFONOFFH");
-        gTargetUgcMapTableField = gIl2CppClassGetFieldFromName(gTargetEntityManagerKlass, "IMDDIDNCIPO");
-    }
-    if (gTargetActorTableField == NULL || gTargetUgcTableField == NULL || gTargetUgcMapTableField == NULL) {
-        gTargetEntityProbeState = TargetEntityProbeWaitingFields;
-        return NO;
-    }
-
-    Il2CppObject *manager = NULL;
-    void *singletonField = gIl2CppClassGetFieldFromName(gTargetEntityManagerKlass, "BHOAGIJIMMJ");
-    if (singletonField == NULL) {
-        gTargetEntityProbeState = TargetEntityProbeWaitingFields;
-        return NO;
-    }
-    gIl2CppFieldStaticGetValue(singletonField, &manager);
-    if (!ValidateInstanceOfClass(manager, gTargetEntityManagerKlass)) {
-        gTargetEntityProbeState = TargetEntityProbeWaitingSingleton;
-        return NO;
-    }
-
-    Il2CppObject *actorTable = NULL;
-    Il2CppObject *ugcTable = NULL;
-    Il2CppObject *ugcMapTable = NULL;
-    gIl2CppFieldGetValue(manager, gTargetActorTableField, &actorTable);
-    gIl2CppFieldGetValue(manager, gTargetUgcTableField, &ugcTable);
-    gIl2CppFieldGetValue(manager, gTargetUgcMapTableField, &ugcMapTable);
-    NSUInteger actorCount = 0;
-    NSUInteger ugcCount = 0;
-    NSUInteger ugcMapCount = 0;
-    if (!ReadManagedCollectionCount(actorTable, &actorCount) ||
-        !ReadManagedCollectionCount(ugcTable, &ugcCount) ||
-        !ReadManagedCollectionCount(ugcMapTable, &ugcMapCount)) {
-        gTargetEntityProbeState = TargetEntityProbeWaitingCollections;
-        return NO;
-    }
-    gTargetActorCount = actorCount;
-    gTargetUgcCount = ugcCount;
-    gTargetUgcMapCount = ugcMapCount;
-    gTargetEntityProbeReady = YES;
-    gTargetEntityProbeState = TargetEntityProbeReady;
-    return YES;
-}
-/*热更新探针只通过 FieldInfo 与 Dictionary.get_Count 读取集合规模；不枚举条目、不保存实体地址、不修改游戏状态。*/
-
 static Il2CppObject *GetCameraFollowInstance(void) {
     if (!EnsureIl2CppThread()) return NULL;
     if (gCameraFollowKlass == NULL) {
@@ -1761,7 +1666,6 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 /*判断是否有功能需要持续维持 */
 
 - (void)updateEngineStatus:(BOOL)connected {
-    /* 状态只表示 IL2CPP 是否可用，不把可选分析探针作为功能前置条件。 */
     NSInteger state = connected ? 1 : 0;
     if (state == self.engineStatusState) return;
     self.engineStatusState = state;
@@ -1779,19 +1683,11 @@ static BOOL ProjectWorldToScreen(Il2CppObject *camera, float wx, float wy, float
 - (void)tickRuntime {
     self.runtimeFrameTick++;
     BOOL connected = EnsureIl2CppThread();
-    if (!connected) {
-        [self updateEngineStatus:NO];
-        return;
-    }
-
-    BOOL heavyTick = (self.runtimeFrameTick % 30 == 0);
-    /*
-     * 实体集合探针依赖某一版 UpdateScript 的混淆类名和字段名，仅用于
-     * 离线分析验证。它不参与功能实现，不能在运行时帧循环中执行，
-     * 以避免热更新换代或场景切换时的反射访问影响独立功能稳定性。
-     */
     [self updateEngineStatus:connected];
+    if (!connected) return;
+
     BOOL anyActive = [self anyFeatureActive];
+    BOOL heavyTick = (self.runtimeFrameTick % 30 == 0);
     if (heavyTick) [self refreshEngineFrameRate];
     if (!anyActive) return;
 
