@@ -3007,6 +3007,34 @@ void FUN_00019afc(double param_1)
 
 
 
+/* FUN_00019c00 at 00019c00 */
+
+/* WARNING: Function: _objc_retainAutoreleasedReturnValue replaced with injection:
+   _objc_retain_fixup */
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+
+undefined8 FUN_00019c00(void)
+
+{
+  dispatch_queue_t queue;
+  dispatch_object_t object;
+  dispatch_time_t start;
+  
+  queue = (dispatch_queue_t)FUN_00017098();
+  object._os_obj =
+       (_os_object_s *)
+       _dispatch_source_create
+                 ((dispatch_source_type_t)PTR___dispatch_source_type_timer_000e04b8,0,0,queue);
+  start = _dispatch_time(0,0);
+  _dispatch_source_set_timer((dispatch_source_t)object._os_obj,start,100000000,10000000);
+  _dispatch_source_set_event_handler(object._os_obj,&PTR___NSConcreteGlobalBlock_000e1270);
+  _dispatch_resume(object);
+  DAT_000e7240._os_obj = (_os_object_s *)object;
+  return 0;
+}
+
+
+
 /* FUN_00019cf0 at 00019cf0 */
 
 void FUN_00019cf0(void)
@@ -3042,6 +3070,32 @@ void FUN_00019d3c(void)
 {
   FUN_00017720(0);
   DAT_000e7248 = 0;
+  return;
+}
+
+
+
+/* FUN_00019d60 at 00019d60 */
+
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+/* WARNING: Function: _objc_retainAutoreleasedReturnValue replaced with injection:
+   _objc_retain_fixup */
+
+void FUN_00019d60(void)
+
+{
+  dispatch_object_t object;
+  dispatch_queue_t queue;
+  
+  object._os_obj =
+       (_os_object_s *)
+       _dispatch_queue_create("com.russ.public.feature-runtime",(dispatch_queue_attr_t)0x0);
+  DAT_000e7250._os_obj = object._os_obj;
+  queue = _dispatch_get_global_queue(0x11,0);
+  _dispatch_set_target_queue(object,queue);
+  _dispatch_queue_set_specific
+            ((dispatch_queue_t)DAT_000e7250._os_obj,PTR_LOOP_000e67a0,PTR_LOOP_000e67a0,
+             (dispatch_function_t)0x0);
   return;
 }
 
@@ -3113,6 +3167,57 @@ void FUN_00019e2c(void)
     _dispatch_source_set_timer(source,start,(uint64_t)interval,(uint64_t)leeway);
     return;
   }
+  return;
+}
+
+
+
+/* FUN_00019f34 at 00019f34 */
+
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+/* WARNING: Function: _objc_retainAutoreleasedReturnValue replaced with injection:
+   _objc_retain_fixup */
+
+void FUN_00019f34(void)
+
+{
+  dispatch_object_t object;
+  dispatch_queue_t queue;
+  
+  object._os_obj =
+       (_os_object_s *)
+       _dispatch_queue_create("com.russ.public.native-lock",(dispatch_queue_attr_t)0x0);
+  DAT_000e7268._os_obj = object._os_obj;
+  queue = _dispatch_get_global_queue(0x11,0);
+  _dispatch_set_target_queue(object,queue);
+  _dispatch_queue_set_specific
+            ((dispatch_queue_t)DAT_000e7268._os_obj,PTR_LOOP_000e67b0,PTR_LOOP_000e67b0,
+             (dispatch_function_t)0x0);
+  return;
+}
+
+
+
+/* FUN_00019fbc at 00019fbc */
+
+/* WARNING: Function: _objc_retainAutoreleasedReturnValue replaced with injection:
+   _objc_retain_fixup */
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+
+void FUN_00019fbc(void)
+
+{
+  dispatch_queue_t queue;
+  
+  queue = (dispatch_queue_t)FUN_00019de8();
+  DAT_000e7170._os_obj =
+       (_os_object_s *)
+       _dispatch_source_create
+                 ((dispatch_source_type_t)PTR___dispatch_source_type_timer_000e04b8,0,0,queue);
+  _dispatch_source_set_timer
+            ((dispatch_source_t)DAT_000e7170._os_obj,0xffffffffffffffff,0xffffffffffffffff,0);
+  _dispatch_source_set_event_handler(DAT_000e7170._os_obj,&PTR___NSConcreteGlobalBlock_000e1330);
+  _dispatch_resume(DAT_000e7170);
   return;
 }
 
@@ -4795,4 +4900,4 @@ void FUN_0003ee20(void)
 
 
 
-/* Recovered functions: 65 */
+/* Recovered functions: 69 */

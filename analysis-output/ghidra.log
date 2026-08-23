@@ -5,14 +5,14 @@ INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1
 INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
 INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1052 ms) (ClassSearcher)  
+INFO  Class search complete (1041 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
 INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
 INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
-INFO  Headless startup complete (6672 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (5674 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
 WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
@@ -102,42 +102,42 @@ WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.
 WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::length_error::vtable (DemangledAddressTable)  
 INFO  -----------------------------------------------------
     AARCH64 ELF PLT Thunks                     0.000 secs
-    ASCII Strings                              0.395 secs
-    Apply Data Archives                        0.368 secs
-    Basic Constant Reference Analyzer          2.920 secs
-    CFStrings                                  0.031 secs
-    Call Convention ID                         3.324 secs
-    Call-Fixup Installer                       0.022 secs
-    Create Address Tables                      0.075 secs
-    Create Address Tables - One Time           0.059 secs
-    Create Function                            0.196 secs
-    Data Reference                             0.272 secs
-    Decompiler Switch Analysis                10.543 secs
-    Decompiler Switch Analysis - One Time      3.612 secs
-    Demangler GNU                              0.246 secs
-    Demangler Swift                           17.098 secs
-    Disassemble                                0.499 secs
-    Disassemble Entry Points                   0.079 secs
-    Embedded Media                             0.355 secs
-    External Entry References                  0.000 secs
-    Function ID                                0.020 secs
-    Function Start Search                      0.082 secs
-    Function Start Search After Code           0.027 secs
-    Function Start Search After Data           0.034 secs
-    Function Start Search delayed - One Time   0.026 secs
-    Mach-O Function Starts                     0.092 secs
-    Non-Returning Functions - Discovered       0.154 secs
-    Non-Returning Functions - Known            0.009 secs
-    Objective-C Message Analyzer              14.012 secs
-    Objective-C Type Metadata Analyzer         1.922 secs
-    Reference                                  0.259 secs
-    Shared Return Calls                        0.181 secs
-    Stack                                      2.660 secs
-    Subroutine References                      0.254 secs
-    Subroutine References - One Time           0.002 secs
-    Swift Type Metadata Analyzer               0.064 secs
+    ASCII Strings                              0.500 secs
+    Apply Data Archives                        0.338 secs
+    Basic Constant Reference Analyzer          2.825 secs
+    CFStrings                                  0.030 secs
+    Call Convention ID                         3.191 secs
+    Call-Fixup Installer                       0.029 secs
+    Create Address Tables                      0.074 secs
+    Create Address Tables - One Time           0.056 secs
+    Create Function                            0.207 secs
+    Data Reference                             0.323 secs
+    Decompiler Switch Analysis                10.627 secs
+    Decompiler Switch Analysis - One Time      3.691 secs
+    Demangler GNU                              0.251 secs
+    Demangler Swift                           13.647 secs
+    Disassemble                                0.511 secs
+    Disassemble Entry Points                   0.072 secs
+    Embedded Media                             0.348 secs
+    External Entry References                  0.001 secs
+    Function ID                                0.019 secs
+    Function Start Search                      0.087 secs
+    Function Start Search After Code           0.036 secs
+    Function Start Search After Data           0.042 secs
+    Function Start Search delayed - One Time   0.025 secs
+    Mach-O Function Starts                     0.138 secs
+    Non-Returning Functions - Discovered       0.162 secs
+    Non-Returning Functions - Known            0.008 secs
+    Objective-C Message Analyzer              13.639 secs
+    Objective-C Type Metadata Analyzer         1.785 secs
+    Reference                                  0.229 secs
+    Shared Return Calls                        0.222 secs
+    Stack                                      3.188 secs
+    Subroutine References                      0.245 secs
+    Subroutine References - One Time           0.003 secs
+    Swift Type Metadata Analyzer               0.071 secs
 -----------------------------------------------------
-     Total Time   59 secs
+     Total Time   56 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/RussOriginal.dylib (HeadlessAnalyzer)  
