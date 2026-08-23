@@ -142,7 +142,7 @@ static void ApplyFieldOfView(CGFloat fieldOfView) {
     }
 }
 /*直接调用unityengine camera改fov */
-static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
+static NSUInteger SetAllComponentsVisible(BOOL visible) {
     if (!ResolveIl2Cpp()) return 0;
     Il2CppDomain *domain = gIl2CppDomainGet();
     if (domain == NULL) return 0;
@@ -152,43 +152,48 @@ static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
     Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &assemblyCount);
     void *monoKlass = NULL;
     void *objectKlass = NULL;
-    void *behaviourKlass = NULL;
+    void *componentKlass = NULL;
+    void *gameObjKlass = NULL;
     for (size_t index = 0; index < assemblyCount; index++) {
         const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
         if (monoKlass == NULL) monoKlass = gIl2CppClassFromName(image, "UnityEngine", "MonoBehaviour");
         if (objectKlass == NULL) objectKlass = gIl2CppClassFromName(image, "UnityEngine", "Object");
-        if (behaviourKlass == NULL) behaviourKlass = gIl2CppClassFromName(image, "UnityEngine", "Behaviour");
-        if (monoKlass != NULL && objectKlass != NULL && behaviourKlass != NULL) break;
+        if (componentKlass == NULL) componentKlass = gIl2CppClassFromName(image, "UnityEngine", "Component");
+        if (gameObjKlass == NULL) gameObjKlass = gIl2CppClassFromName(image, "UnityEngine", "GameObject");
+        if (monoKlass != NULL && objectKlass != NULL && componentKlass != NULL && gameObjKlass != NULL) break;
     }
-    if (monoKlass == NULL || objectKlass == NULL || behaviourKlass == NULL) return 0;
+    if (monoKlass == NULL || objectKlass == NULL || componentKlass == NULL || gameObjKlass == NULL) return 0;
     if (gIl2CppClassGetTypeObject == NULL) return 0;
-
 
     Il2CppObject *typeObject = gIl2CppClassGetTypeObject(monoKlass);
     if (typeObject == NULL) return 0;
 
     const MethodInfo *findMethod = gIl2CppClassGetMethodFromName(objectKlass, "FindObjectsOfType", 1);
-    const MethodInfo *setEnabled = gIl2CppClassGetMethodFromName(behaviourKlass, "set_enabled", 1);
-    if (findMethod == NULL || setEnabled == NULL) return 0;
+    const MethodInfo *getGameObject = gIl2CppClassGetMethodFromName(componentKlass, "get_gameObject", 0);
+    const MethodInfo *setActive = gIl2CppClassGetMethodFromName(gameObjKlass, "SetActive", 1);
+    if (findMethod == NULL || getGameObject == NULL || setActive == NULL) return 0;
 
     Il2CppObject *exception = NULL;
     void *findArgs[] = { &typeObject };
     Il2CppArray *result = (Il2CppArray *)gIl2CppRuntimeInvoke(findMethod, NULL, findArgs, &exception);
     if (exception != NULL || result == NULL) return 0;
 
-    BOOL value = enable ? YES : NO;
-    void *enableArgs[] = { &value };
+    BOOL value = visible ? YES : NO;
+    void *activeArgs[] = { &value };
     NSUInteger touched = 0;
     for (uintptr_t index = 0; index < result->maxLength; index++) {
         Il2CppObject *behaviour = result->objects[index];
         if (behaviour == NULL) continue;
         exception = NULL;
-        gIl2CppRuntimeInvoke(setEnabled, behaviour, enableArgs, &exception);
+        Il2CppObject *gameObject = gIl2CppRuntimeInvoke(getGameObject, behaviour, NULL, &exception);
+        if (exception != NULL || gameObject == NULL) continue;
+        exception = NULL;
+        gIl2CppRuntimeInvoke(setActive, gameObject, activeArgs, &exception);
         if (exception == NULL) touched++;
     }
     return touched;
 }
-/*object.findsoftype(typeof(monobehaviour))扫描全部组件 behaviour.set_enabled手动开关 */
+/*object.findsoftype(typeof(monobehaviour))扫描全部组件 component.get_gameobject拿节点 gameobject.setactive切显隐 */
 @interface RussOverlayController : NSObject
 @property(nonatomic, strong) UIView *panel;
 @property(nonatomic, strong) UIButton *floatingButton;
@@ -197,7 +202,7 @@ static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
 @property(nonatomic, assign) CGFloat speedMultiplier;
 @property(nonatomic, assign) CGFloat cameraDistance;
 @property(nonatomic, assign) BOOL routeEnabled;
-@property(nonatomic, assign) BOOL componentsEnabled;
+@property(nonatomic, assign) BOOL componentsVisible;
 @property(nonatomic, strong) UILabel *componentsHint;
 @end
 /* 悬浮ui控制器*/
@@ -261,12 +266,12 @@ static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
     [self.panel addSubview:routeLabel];
 
     UISwitch *componentsSwitch = [[UISwitch alloc] initWithFrame:CGRectMake(172.0, 295.0, 0.0, 0.0)];
-    componentsSwitch.on = self.componentsEnabled;
+    componentsSwitch.on = self.componentsVisible;
     [componentsSwitch addTarget:self action:@selector(componentsChanged:) forControlEvents:UIControlEventValueChanged];
     [self.panel addSubview:componentsSwitch];
 
     UILabel *componentsLabel = [[UILabel alloc] initWithFrame:CGRectMake(16.0, 297.0, 150.0, 28.0)];
-    componentsLabel.text = @"组件手动开启";
+    componentsLabel.text = @"组件显隐";
     componentsLabel.textColor = UIColor.whiteColor;
     componentsLabel.font = [UIFont systemFontOfSize:14.0];
     [self.panel addSubview:componentsLabel];
@@ -325,12 +330,12 @@ static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
 - (void)speedChanged:(UISlider *)sender { self.speedMultiplier = sender.value; [self saveSettings]; }
 - (void)routeChanged:(UISwitch *)sender { self.routeEnabled = sender.isOn; [self saveSettings]; }
 - (void)componentsChanged:(UISwitch *)sender {
-    self.componentsEnabled = sender.isOn;
+    self.componentsVisible = sender.isOn;
     [self saveSettings];
-    NSUInteger count = EnableAllMonoBehaviours(sender.isOn);
-    self.componentsHint.text = [NSString stringWithFormat:@"（FindObjectsOfType 已%@ %lu 个）", sender.isOn ? @"启用" : @"禁用", (unsigned long)count];
+    NSUInteger count = SetAllComponentsVisible(sender.isOn);
+    self.componentsHint.text = [NSString stringWithFormat:@"（FindObjectsOfType 已%@ %lu 个）", sender.isOn ? @"显示" : @"隐藏", (unsigned long)count];
 }
-/*fov滑块拖动 更新成员变量 savesetting永久化 立刻调用applycamerafollow刷新游戏视角 速度路线只存配置没有底层ilcapp逻辑 组件开关扫描monobehaviour并set_enabled */
+/*fov滑块拖动 更新成员变量 savesetting永久化 立刻调用applycamerafollow刷新游戏视角 速度路线只存配置没有底层ilcapp逻辑 组件开关扫描monobehaviour拿gameobject.setactive切显隐 */
 - (void)loadSettings {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     self.firstPersonFOV = [defaults objectForKey:@"russ.firstFOV"] ? [defaults floatForKey:@"russ.firstFOV"] : 75.0;
@@ -338,7 +343,7 @@ static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
     self.speedMultiplier = [defaults objectForKey:@"russ.speed"] ? [defaults floatForKey:@"russ.speed"] : 1.0;
     self.cameraDistance = [defaults objectForKey:@"russ.distance"] ? [defaults floatForKey:@"russ.distance"] : 8.0;
     self.routeEnabled = [defaults boolForKey:@"russ.route"];
-    self.componentsEnabled = [defaults boolForKey:@"russ.components"];
+    self.componentsVisible = [defaults boolForKey:@"russ.components"];
 }
 /* 加载本地持久化配置 从系统nsuserdefaults读取上次保存参数 不存在设置的默认值*/
 - (void)saveSettings {
@@ -348,7 +353,7 @@ static NSUInteger EnableAllMonoBehaviours(BOOL enable) {
     [defaults setFloat:self.speedMultiplier forKey:@"russ.speed"];
     [defaults setFloat:self.cameraDistance forKey:@"russ.distance"];
     [defaults setBool:self.routeEnabled forKey:@"russ.route"];
-    [defaults setBool:self.componentsEnabled forKey:@"russ.components"];
+    [defaults setBool:self.componentsVisible forKey:@"russ.components"];
 }
 /* 保存配置到本地 下次打开延用fov*/
 @end
