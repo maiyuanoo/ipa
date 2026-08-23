@@ -816,7 +816,8 @@ static void *gFindPathLineCtrlKlass;
 static void *gRendererKlass;
 static const MethodInfo *gSetEnabledMethod;
 static void *gRouteLineRendererField;
-/*路线控制器/字段/renderer缓存；当前 UpdateScript_500 元数据仅确认 lineRender 字段*/
+static void *gRoutePointsListField;
+/*路线控制器/字段/renderer缓存；Russ 原版同时以 lineRender 与 pointsList 验证已生成路线*/
 
 static NSUInteger SetIslandRouteVisible(BOOL visible) {
     if (!EnsureIl2CppThread()) return 0;
@@ -827,7 +828,8 @@ static NSUInteger SetIslandRouteVisible(BOOL visible) {
     }
     if (gRouteLineRendererField == NULL) {
         gRouteLineRendererField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "lineRender");
-        if (gRouteLineRendererField == NULL || gIl2CppFieldGetValue == NULL) return 0;
+        gRoutePointsListField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "pointsList");
+        if (gRouteLineRendererField == NULL || gRoutePointsListField == NULL || gIl2CppFieldGetValue == NULL) return 0;
     }
     if (gSetEnabledMethod == NULL) {
         gSetEnabledMethod = gIl2CppClassGetMethodFromName(gRendererKlass, "set_enabled", 1);
@@ -843,15 +845,17 @@ static NSUInteger SetIslandRouteVisible(BOOL visible) {
         Il2CppObject *routeController = result->objects[index];
         if (routeController == NULL) continue;
         Il2CppObject *lineRenderer = NULL;
+        Il2CppObject *pointsList = NULL;
         gIl2CppFieldGetValue(routeController, gRouteLineRendererField, &lineRenderer);
-        if (!ValidateInstanceOfClass(lineRenderer, gRendererKlass)) continue;
+        gIl2CppFieldGetValue(routeController, gRoutePointsListField, &pointsList);
+        if (!ValidateInstanceOfClass(lineRenderer, gRendererKlass) || pointsList == NULL) continue;
         exception = NULL;
         gIl2CppRuntimeInvoke(gSetEnabledMethod, lineRenderer, enableArgs, &exception);
         if (exception == NULL) touched++;
     }
     return touched;
 }
-/*仅操作 FindPathLineCtrl.lineRender；热更元数据已确认当前版本没有 pointsList，不触碰其他 LineRenderer*/
+/*仅操作 FindPathLineCtrl.lineRender；pointsList 为空说明路线尚未生成，不触碰其他 LineRenderer*/
 
 static void *gTransformKlass;
 static const MethodInfo *gGetTransformMethod;
