@@ -18,11 +18,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Install Ghidra
-        run: brew install --cask ghidra
+      - name: Download Ghidra
+        run: |
+          ARCHIVE_PATH="$RUNNER_TEMP/ghidra.zip"
+          curl --fail --location --retry 3 --output "$ARCHIVE_PATH" \
+            https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.3_build/ghidra_12.1.3_PUBLIC_20260817.zip
+          echo "93a5d11a9ad510622acaaf908c556a7b9b764d338e78a7567f3689bf5081fd54  $ARCHIVE_PATH" | shasum -a 256 -c -
+          unzip -q "$ARCHIVE_PATH" -d "$RUNNER_TEMP/ghidra"
       - name: Locate Ghidra headless analyzer
         run: |
-          ANALYZER_PATH="$(find /Applications -type f -name analyzeHeadless -print -quit)"
+          ANALYZER_PATH="$(find "$RUNNER_TEMP/ghidra" -type f -name analyzeHeadless -print -quit)"
           test -n "$ANALYZER_PATH"
           echo "ANALYZER_PATH=$ANALYZER_PATH" >> "$GITHUB_ENV"
       - name: Recover native helper pseudocode
