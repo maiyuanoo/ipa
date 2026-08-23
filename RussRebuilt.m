@@ -727,6 +727,8 @@ static const MethodInfo *gGraphicGetColorMethod;
 static const MethodInfo *gGraphicSetColorMethod;
 static void *gCoffinEntryListField;
 static uint32_t gCoffinPage = 1;
+static BOOL gCoffinRevealEnabled;
+static float gDemagnetizationFactor;
 static RussCoffinColorCacheEntry gCoffinColorCache[kRussCoffinColorCacheMax];
 /*Russ 0x17720：EAKGFFFBKDG.DCODHFKCBGO → GAKFOICFFGF.DGFGHBCDENH →
   JJKENHNKEJP.IDBNHPMAGCN；只处理该链产生的 Image，不扫描全局 Graphic*/
@@ -765,7 +767,7 @@ static NSUInteger RestoreCoffinGraphicColors(void) {
     return restored;
 }
 
-static BOOL CacheAndClearCoffinGraphic(Il2CppObject *graphic) {
+static BOOL CacheAndApplyCoffinGraphicAlpha(Il2CppObject *graphic, float alphaFactor) {
     if (graphic == NULL || !ValidateInstanceOfClass(graphic, gImageKlass) ||
         gGraphicGetColorMethod == NULL || gGraphicSetColorMethod == NULL ||
         gIl2CppObjectUnbox == NULL || gIl2CppGCHandleNew == NULL) return NO;
@@ -792,15 +794,15 @@ static BOOL CacheAndClearCoffinGraphic(Il2CppObject *graphic) {
         gCoffinColorCache[slot].originalColor = *original;
     }
 
-    UnityColor clearedColor = gCoffinColorCache[slot].originalColor;
-    clearedColor.a = 0.0f;/*原版收敛后按 originalAlpha * (1 - 1) 写透明*/
-    void *arguments[] = { &clearedColor };
+    UnityColor adjustedColor = gCoffinColorCache[slot].originalColor;
+    adjustedColor.a *= (float)MAX(0.0, MIN(1.0, alphaFactor));
+    void *arguments[] = { &adjustedColor };
     Il2CppObject *exception = NULL;
     gIl2CppRuntimeInvoke(gGraphicSetColorMethod, graphic, arguments, &exception);
     return exception == NULL;
 }
 
-static NSUInteger ApplyCoffinEntryList(Il2CppObject *listObject) {
+static NSUInteger ApplyCoffinEntryList(Il2CppObject *listObject, float alphaFactor) {
     if (listObject == NULL) return 0;
 
     /*原版 0x18 读取 List._items + _size，随后按数组0x20、条目0x18读取；
@@ -821,13 +823,12 @@ static NSUInteger ApplyCoffinEntryList(Il2CppObject *listObject) {
         Il2CppObject *graphic = NULL;
         if (!ReadProcessMemory(entryAddress, &state, sizeof(state)) || state < 0 ||
             !ReadProcessMemory(entryAddress + 0x10, &graphic, sizeof(graphic))) continue;
-        if (CacheAndClearCoffinGraphic(graphic)) touched++;
+        if (CacheAndApplyCoffinGraphicAlpha(graphic, alphaFactor)) touched++;
     }
     return touched;
 }
 
-static NSUInteger ApplyCoffinReveal(BOOL reveal) {
-    if (!reveal) return RestoreCoffinGraphicColors();
+static NSUInteger ApplyCoffinVisualState(void) {
     if (!EnsureIl2CppThread() || gIl2CppFieldGetValue == NULL) return 0;
     if (gCoffinSourceKlass == NULL) gCoffinSourceKlass = FindClassInAllAssemblies("", "EAKGFFFBKDG");
     if (gCoffinPageKlass == NULL) gCoffinPageKlass = FindClassInAllAssemblies("", "GAKFOICFFGF");
@@ -858,120 +859,23 @@ static NSUInteger ApplyCoffinReveal(BOOL reveal) {
 
     Il2CppObject *listObject = NULL;
     gIl2CppFieldGetValue(entry, gCoffinEntryListField, &listObject);
-    return ApplyCoffinEntryList(listObject);
+    float hidingFactor = gCoffinRevealEnabled ? 1.0f : gDemagnetizationFactor;
+    return ApplyCoffinEntryList(listObject, 1.0f - hidingFactor);
 }
-/*Russ 原版显棺：混淆对象链定位目标 Image，缓存原 Color 后仅清 alpha；关闭时精确恢复*/
+/*Russ 0x17720：目标 Image 的 alpha = 原 alpha × (1 - 强度)，每次仅处理一个分页。*/
 
-static void *gRigidbodyKlass;
-static const MethodInfo *gGetDragMethod;
-static const MethodInfo *gGetAngularDragMethod;
-static const MethodInfo *gSetDragMethod;
-static const MethodInfo *gSetAngularDragMethod;
-enum { kRussRigidbodyCacheMax = 1024 };
-typedef struct RussRigidbodyCacheEntry {
-    uint32_t handle;
-    float originalDrag;
-    float originalAngularDrag;
-} RussRigidbodyCacheEntry;
-static RussRigidbodyCacheEntry gRigidbodyCache[kRussRigidbodyCacheMax];
-/*消磁功能的原值缓存；关闭时恢复每个实际修改过的刚体。*/
-
-static NSInteger FindRigidbodyCacheEntry(Il2CppObject *body) {
-    if (body == NULL || gIl2CppGCHandleGetTarget == NULL) return NSNotFound;
-    for (NSInteger index = 0; index < kRussRigidbodyCacheMax; index++) {
-        if (gRigidbodyCache[index].handle != 0 &&
-            gIl2CppGCHandleGetTarget(gRigidbodyCache[index].handle) == body) return index;
-    }
-    return NSNotFound;
-}
-
-static NSUInteger RestoreDemagnetization(void) {
-    if (gSetDragMethod == NULL || gIl2CppGCHandleGetTarget == NULL) return 0;
-    NSUInteger restored = 0;
-    for (NSInteger index = 0; index < kRussRigidbodyCacheMax; index++) {
-        RussRigidbodyCacheEntry *entry = &gRigidbodyCache[index];
-        if (entry->handle == 0) continue;
-        Il2CppObject *body = gIl2CppGCHandleGetTarget(entry->handle);
-        if (body != NULL && isfinite(entry->originalDrag) && isfinite(entry->originalAngularDrag)) {
-            void *dragArguments[] = { &entry->originalDrag };
-            void *angularArguments[] = { &entry->originalAngularDrag };
-            Il2CppObject *exception = NULL;
-            gIl2CppRuntimeInvoke(gSetDragMethod, body, dragArguments, &exception);
-            if (exception == NULL && gSetAngularDragMethod != NULL) {
-                exception = NULL;
-                gIl2CppRuntimeInvoke(gSetAngularDragMethod, body, angularArguments, &exception);
-            }
-            if (exception == NULL) restored++;
-        }
-        if (gIl2CppGCHandleFree != NULL) gIl2CppGCHandleFree(entry->handle);
-        entry->handle = 0;
-    }
-    return restored;
+static NSUInteger ApplyCoffinReveal(BOOL reveal) {
+    gCoffinRevealEnabled = reveal;
+    if (!gCoffinRevealEnabled && gDemagnetizationFactor <= 0.0f) return RestoreCoffinGraphicColors();
+    return ApplyCoffinVisualState();
 }
 
 static NSUInteger ApplyDemagnetization(float strengthPercent) {
-    if (!EnsureIl2CppThread()) return 0;
-    if (gRigidbodyKlass == NULL) {
-        gRigidbodyKlass = FindClassInAllAssemblies("UnityEngine", "Rigidbody");
-        if (gRigidbodyKlass == NULL) return 0;
-    }
-    if (gSetDragMethod == NULL) {
-        gGetDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "get_drag", 0);
-        gGetAngularDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "get_angularDrag", 0);
-        gSetDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "set_drag", 1);
-        gSetAngularDragMethod = gIl2CppClassGetMethodFromName(gRigidbodyKlass, "set_angularDrag", 1);
-        if (gGetDragMethod == NULL || gGetAngularDragMethod == NULL || gSetDragMethod == NULL ||
-            gSetAngularDragMethod == NULL || gIl2CppObjectUnbox == NULL || gIl2CppGCHandleNew == NULL) return 0;
-    }
-    if (strengthPercent <= 0.0f) return RestoreDemagnetization();
-    Il2CppArray *bodies = ScanObjectsOfClass(gRigidbodyKlass, YES);
-    if (bodies == NULL) return 0;
-    float normalized = (float)MAX(0.0, MIN(100.0, strengthPercent)) / 100.0f;
-    /* 原版只保留 0~1 的强度状态；这里以该状态缩放目标刚体的原始阻尼。 */
-    NSUInteger touched = 0;
-    Il2CppObject *exception = NULL;
-    for (uintptr_t index = 0; index < bodies->maxLength; index++) {
-        Il2CppObject *body = bodies->objects[index];
-        if (body == NULL) continue;
-        NSInteger slot = FindRigidbodyCacheEntry(body);
-        if (slot == NSNotFound) {
-            for (NSInteger candidate = 0; candidate < kRussRigidbodyCacheMax; candidate++) {
-                if (gRigidbodyCache[candidate].handle == 0) {
-                    slot = candidate;
-                    break;
-                }
-            }
-            if (slot == NSNotFound) continue;
-            exception = NULL;
-            Il2CppObject *dragObject = gIl2CppRuntimeInvoke(gGetDragMethod, body, NULL, &exception);
-            if (exception != NULL || dragObject == NULL) continue;
-            exception = NULL;
-            Il2CppObject *angularObject = gIl2CppRuntimeInvoke(gGetAngularDragMethod, body, NULL, &exception);
-            if (exception != NULL || angularObject == NULL) continue;
-            float *originalDrag = (float *)gIl2CppObjectUnbox(dragObject);
-            float *originalAngularDrag = (float *)gIl2CppObjectUnbox(angularObject);
-            if (originalDrag == NULL || originalAngularDrag == NULL || !isfinite(*originalDrag) || !isfinite(*originalAngularDrag)) continue;
-            uint32_t handle = gIl2CppGCHandleNew(body, NO);
-            if (handle == 0) continue;
-            gRigidbodyCache[slot].handle = handle;
-            gRigidbodyCache[slot].originalDrag = *originalDrag;
-            gRigidbodyCache[slot].originalAngularDrag = *originalAngularDrag;
-        }
-        float drag = gRigidbodyCache[slot].originalDrag * (1.0f - normalized);
-        float angularDrag = gRigidbodyCache[slot].originalAngularDrag * (1.0f - normalized);
-        void *dragArgs[] = { &drag };
-        void *angularArgs[] = { &angularDrag };
-        exception = NULL;
-        gIl2CppRuntimeInvoke(gSetDragMethod, body, dragArgs, &exception);
-        if (gSetAngularDragMethod != NULL) {
-            exception = NULL;
-            gIl2CppRuntimeInvoke(gSetAngularDragMethod, body, angularArgs, &exception);
-        }
-        if (exception == NULL) touched++;
-    }
-    return touched;
+    gDemagnetizationFactor = (float)MAX(0.0, MIN(100.0, strengthPercent)) / 100.0f;
+    if (!gCoffinRevealEnabled && gDemagnetizationFactor <= 0.0f) return RestoreCoffinGraphicColors();
+    return ApplyCoffinVisualState();
 }
-/*消磁按原版 0~100% 转 0~1；每个刚体保留实际原始阻尼，关闭时精确恢复。*/
+/*消磁沿用原版 EAK→GAK→JJK Image 链：强度 0~100% 直接控制原 alpha 的衰减。*/
 
 static void *gFindPathLineCtrlKlass;
 static void *gLineRendererKlass;
