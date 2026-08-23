@@ -1194,6 +1194,27 @@ void _YYGameMemorySetHighlight(float param_1,int param_2)
 
 
 
+/* FUN_00017184 at 00017184 */
+
+/* WARNING: Function: _objc_retainAutoreleasedReturnValue replaced with injection:
+   _objc_retain_fixup */
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+
+undefined8 FUN_00017184(void)
+
+{
+  undefined8 uVar1;
+  
+  if (DAT_000e7288 != -1) {
+    thunk_FUN_0001bef0();
+  }
+  uVar1 = FUN_00019de8();
+  _dispatch_async(uVar1,&PTR___NSConcreteGlobalBlock_000e12d0);
+  return 0;
+}
+
+
+
 /* _YYGameMemorySetFogRemoval at 000171d4 */
 
 void _YYGameMemorySetFogRemoval(int param_1)
@@ -1464,4 +1485,32 @@ undefined8 _YYGameMemoryShutdown(void)
 
 
 
-/* Recovered functions: 17 */
+/* FUN_00019cf0 at 00019cf0 */
+
+void FUN_00019cf0(void)
+
+{
+  char cVar1;
+  bool bVar2;
+  
+  if (DAT_000e7441 == '\x01') {
+    while (DAT_000e7248 == '\0') {
+      cVar1 = '\x01';
+      bVar2 = (bool)ExclusiveMonitorPass(0xe7248,0x10);
+      if (bVar2) {
+        DAT_000e7248 = '\x01';
+        cVar1 = ExclusiveMonitorsStatus();
+      }
+      if (cVar1 == '\0') {
+        _dispatch_async(PTR___dispatch_main_q_000e04b0,&PTR___NSConcreteGlobalBlock_000e1290);
+        return;
+      }
+    }
+    ClearExclusiveLocal();
+  }
+  return;
+}
+
+
+
+/* Recovered functions: 19 */
