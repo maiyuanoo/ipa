@@ -181,7 +181,8 @@ public class RecoverNative extends GhidraScript {
 
     private boolean isDrawingFunction(Function function) {
         long entryOffset = function.getEntryPoint().getOffset();
-        return entryOffset == 0x06e748L || entryOffset == 0x17332cL ||
+        return entryOffset == 0x06e748L || entryOffset == 0x0723c4L ||
+            entryOffset == 0x17332cL ||
             entryOffset == 0x18c8dcL || entryOffset == 0x279198L ||
             entryOffset == 0x27b1e4L || entryOffset == 0x27b354L ||
             entryOffset == 0x27b618L || entryOffset == 0x27b804L ||
@@ -258,10 +259,12 @@ public class RecoverNative extends GhidraScript {
         while (functions.hasNext() && !monitor.isCancelled()) {
             Function function = functions.next();
             allFunctions.add(function);
-            if ((drawingMode && isDrawingFunction(function)) ||
-                (!drawingMode && (isTargetFunction(function.getName()) || isRuntimeDispatcher(function) ||
+            boolean selectedForDrawingRecovery = drawingMode && isDrawingFunction(function);
+            boolean selectedForFullRecovery = !drawingMode &&
+                (isTargetFunction(function.getName()) || isRuntimeDispatcher(function) ||
                 blockInvokeOffsets.contains(function.getEntryPoint().getOffset()) ||
-                evidenceReferenceOffsets.contains(function.getEntryPoint().getOffset()))) {
+                evidenceReferenceOffsets.contains(function.getEntryPoint().getOffset()));
+            if (selectedForDrawingRecovery || selectedForFullRecovery) {
                 targetFunctions.add(function);
             }
         }
