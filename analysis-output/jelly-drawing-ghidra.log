@@ -5,14 +5,12 @@ INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1
 INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
 INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (869 ms) (ClassSearcher)  
+INFO  Class search complete (1079 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
-INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
-INFO  Headless startup complete (6322 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (3655 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
 WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
@@ -43,28 +41,30 @@ INFO  HEADLESS Script Paths:
     /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
     /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts (HeadlessAnalyzer)  
 INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
-INFO  Creating temporary project: /home/runner/work/_temp/ghidra-project/CiyueDrawingRecovery (HeadlessAnalyzer)  
-INFO  Creating project: /home/runner/work/_temp/ghidra-project/CiyueDrawingRecovery (DefaultProject)  
+INFO  Creating temporary project: /home/runner/work/_temp/ghidra-project/JellyDrawingRecovery (HeadlessAnalyzer)  
+INFO  Creating project: /home/runner/work/_temp/ghidra-project/JellyDrawingRecovery (DefaultProject)  
 INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
-INFO       project: /home/runner/work/_temp/ghidra-project/CiyueDrawingRecovery (HeadlessAnalyzer)  
-INFO  IMPORTING: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO       project: /home/runner/work/_temp/ghidra-project/JellyDrawingRecovery (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
 WARN  Using unknown opinion: Mac OS X Mach-O, AARCH64:LE:64:v8A:default (LcsHintLoadSpecChooser)  
 INFO  Using Loader: Mac OS X Mach-O (ProgramLoader)  
 INFO  Using Language/Compiler: AARCH64:LE:64:v8A:default (ProgramLoader)  
 INFO  Using Library Search Path: [., /bin, /lib, /lib64, /lib/x86_64-linux-gnu, /lib/aarch64-linux-gnu, /usr/bin, /usr/lib, /usr/X11R6/bin, /usr/X11R6/lib, /usr/java/packages/lib, /usr/lib64] (ProgramLoader)  
 INFO  Additional info:
-Loading file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib?MD5=3b300a5dc13764e4680ce3ccd2bb3e95...
-Ciyue0818.dylib: installed 8 objc SpecExtensions
+Loading file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib?MD5=f8c3d5fcbf0d50372bac5271b5689ff9...
+GD.dylib: installed 8 objc SpecExtensions
 ------------------------------------------------
 
-Linking the External Programs of 'Ciyue0818.dylib' to imported libraries...
+Linking the External Programs of 'GD.dylib' to imported libraries...
   [/usr/lib/libobjc.A.dylib] -> not found in project
   [/System/Library/Frameworks/Foundation.framework/Foundation] -> not found in project
   [/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation] -> not found in project
   [/System/Library/Frameworks/UIKit.framework/UIKit] -> not found in project
   [/System/Library/Frameworks/Security.framework/Security] -> not found in project
+  [/System/Library/Frameworks/CFNetwork.framework/CFNetwork] -> not found in project
   [/System/Library/Frameworks/QuartzCore.framework/QuartzCore] -> not found in project
   [/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics] -> not found in project
+  [/System/Library/Frameworks/CoreText.framework/CoreText] -> not found in project
   [/System/Library/Frameworks/AVFoundation.framework/AVFoundation] -> not found in project
   [/System/Library/Frameworks/Accelerate.framework/Accelerate] -> not found in project
   [/System/Library/Frameworks/GLKit.framework/GLKit] -> not found in project
@@ -79,75 +79,77 @@ Linking the External Programs of 'Ciyue0818.dylib' to imported libraries...
 
  (ProgramLoader)  
 INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
-INFO  ANALYZING all memory and code: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
 INFO  hit non-returning function, restarting decompiler switch analyzer later (DecompilerSwitchAnalyzer)  
-ERROR VarnodeContext: out of address spaces at @000836dc for: x0-000836dc (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @00207610 for: x11-00207610 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @0014e0c4 for: x18-0014e0c4 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @000dd128 for: x9-000dd128 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @00053b88 for: x15-00053b88 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @0009b390 for: d25-0009b390 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @00180550 for: x17-00180550 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00163650 for: x9-00163650 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0004993c for: x18-0004993c (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @001329ec for: x18-001329ec (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00092bd0 for: x18-00092bd0 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00078070 for: x0-00078070 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @001f8e08 for: x11-001f8e08 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @001791a8 for: x17-001791a8 (VarnodeContext)  
 INFO  Packed database cache: /var/tmp/runner-ghidra/packed-db-cache (PackedDatabaseCache)  
 INFO  Applied data type archive: mac_osx (ApplyDataArchiveAnalyzer)  
-WARN  Unable to fully apply external demangled Address Table at 00517800: __cxxabiv1::__class_type_info::vtable (DemangledAddressTable)  
-WARN  Unable to fully apply external demangled Address Table at 00517900: __cxxabiv1::__si_class_type_info::vtable (DemangledAddressTable)  
-WARN  Unable to fully apply external demangled Address Table at 00517a00: std::length_error::vtable (DemangledAddressTable)  
-WARN  Unable to fully apply external demangled Address Table at 00517b00: std::out_of_range::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00583800: __cxxabiv1::__class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00583900: __cxxabiv1::__si_class_type_info::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00583a00: std::length_error::vtable (DemangledAddressTable)  
+WARN  Unable to fully apply external demangled Address Table at 00583b00: std::out_of_range::vtable (DemangledAddressTable)  
 WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::__cxxabiv1::__class_type_info::vtable (DemangledAddressTable)  
 WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::__cxxabiv1::__si_class_type_info::vtable (DemangledAddressTable)  
 WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::length_error::vtable (DemangledAddressTable)  
 WARN  Unable to fully apply external demangled Address Table: /usr/lib/libc++.1.dylib::std::out_of_range::vtable (DemangledAddressTable)  
-ERROR VarnodeContext: out of address spaces at @00083bb8 for: d18-00083bb8 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @00207604 for: d30-00207604 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @0014e0c4 for: x16-0014e0c4 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @000dd114 for: d22-000dd114 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @00053b78 for: d30-00053b78 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @0009b390 for: d19-0009b390 (VarnodeContext)  
-ERROR VarnodeContext: out of address spaces at @00180544 for: d26-00180544 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0016363c for: d22-0016363c (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0004993c for: x1-0004993c (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @001329ec for: x16-001329ec (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @00092bd0 for: x12-00092bd0 (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0007854c for: d18-0007854c (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @001f8dfc for: d30-001f8dfc (VarnodeContext)  
+ERROR VarnodeContext: out of address spaces at @0017919c for: d26-0017919c (VarnodeContext)  
 INFO  -----------------------------------------------------
     AARCH64 ELF PLT Thunks                     0.000 secs
-    ASCII Strings                              0.678 secs
-    Apply Data Archives                        0.339 secs
-    Basic Constant Reference Analyzer         30.591 secs
-    CFStrings                                  0.072 secs
-    Call Convention ID                         2.897 secs
-    Call-Fixup Installer                       0.121 secs
-    Create Address Tables                      0.822 secs
-    Create Address Tables - One Time           0.016 secs
-    Create Function                            1.970 secs
-    Data Reference                             0.652 secs
-    Decompiler Switch Analysis                10.480 secs
-    Decompiler Switch Analysis - One Time     40.692 secs
-    Demangler GNU                              0.270 secs
-    Disassemble                                0.491 secs
-    Disassemble Entry Points                   0.051 secs
-    Embedded Media                             0.058 secs
-    External Entry References                  0.000 secs
-    Function ID                                0.033 secs
-    Function Start Search                      0.232 secs
-    Function Start Search After Code           0.192 secs
-    Function Start Search After Data           0.370 secs
-    Function Start Search delayed - One Time   0.147 secs
-    Mach-O Function Starts                     0.020 secs
-    Non-Returning Functions - Discovered       1.103 secs
+    ASCII Strings                              0.620 secs
+    Apply Data Archives                        0.352 secs
+    Basic Constant Reference Analyzer         23.764 secs
+    CFStrings                                  0.059 secs
+    Call Convention ID                         3.261 secs
+    Call-Fixup Installer                       0.141 secs
+    Create Address Tables                      0.588 secs
+    Create Address Tables - One Time           0.027 secs
+    Create Function                            1.965 secs
+    Data Reference                             0.633 secs
+    Decompiler Switch Analysis                 9.446 secs
+    Decompiler Switch Analysis - One Time     38.442 secs
+    Demangler GNU                              0.342 secs
+    Disassemble                                0.393 secs
+    Disassemble Entry Points                   0.054 secs
+    Embedded Media                             0.074 secs
+    External Entry References                  0.001 secs
+    Function ID                                0.032 secs
+    Function Start Search                      0.228 secs
+    Function Start Search After Code           0.163 secs
+    Function Start Search After Data           0.269 secs
+    Function Start Search delayed - One Time   0.149 secs
+    Mach-O Function Starts                     0.023 secs
+    Non-Returning Functions - Discovered       1.054 secs
     Non-Returning Functions - Known            0.006 secs
-    Objective-C Message Analyzer             161.412 secs
-    Objective-C Type Metadata Analyzer        10.680 secs
-    Reference                                  0.893 secs
-    Shared Return Calls                        0.814 secs
-    Stack                                     34.311 secs
-    Subroutine References                      0.551 secs
-    Subroutine References - One Time           0.001 secs
+    Objective-C Message Analyzer             156.314 secs
+    Objective-C Type Metadata Analyzer         9.588 secs
+    Reference                                  0.809 secs
+    Shared Return Calls                        0.935 secs
+    Stack                                     27.858 secs
+    Subroutine References                      0.580 secs
+    Subroutine References - One Time           0.004 secs
 -----------------------------------------------------
-     Total Time   300 secs
+     Total Time   278 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
-INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
-INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/CiyueDrawingRecovered.c' 'drawing'  (HeadlessAnalyzer)  
+INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/JellyDrawingRecovered.c' 'jelly'  (HeadlessAnalyzer)  
 INFO  SCRIPT: /home/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java (HeadlessAnalyzer)  
-INFO  ANALYZING changes made by post scripts: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
-INFO  REPORT: Post-analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
-INFO  /Ciyue0818.dylib: file created (runner) (LocalFileSystem)  
-INFO  REPORT: Save succeeded for: /Ciyue0818.dylib (CiyueDrawingRecovery:/Ciyue0818.dylib) (HeadlessAnalyzer)  
+WARN  Decompiling 0057f801, pcode error at 0057f801: Invalid instruction address (improperly aligned) (DecompileCallback)  
+WARN  Decompiling 00584500, pcode error at 00584500: Unable to disassemble EXTERNAL block location: 00584500 (DecompileCallback)  
+INFO  ANALYZING changes made by post scripts: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
+INFO  /GD.dylib: file created (runner) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /GD.dylib (JellyDrawingRecovery:/GD.dylib) (HeadlessAnalyzer)  
 INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
