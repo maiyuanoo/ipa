@@ -212,7 +212,9 @@ static void *FindClassInAllAssemblies(const char *namespaceName, const char *cla
 /*跨全部程序集找类(照原版0x178a0循环):热更类camerafollow/ugcobjectcoffin命名空间为"" 引擎类为"UnityEngine" dll已验证*/
 
 static NSString *CopyDrawingAssemblyStatus(void) {
-    if (!EnsureIl2CppThread() || gIl2CppImageGetName == NULL) return @"程序集枚举不可用";
+    if (!EnsureIl2CppThread()) return @"程序集枚举不可用";
+    if (gIl2CppAssemblyGetImage == NULL) return @"程序集图像接口缺失";
+    if (gIl2CppImageGetName == NULL) return @"程序集名称接口缺失";
     Il2CppDomain *domain = gIl2CppDomainGet();
     size_t count = 0;
     Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &count);
