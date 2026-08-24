@@ -22,15 +22,15 @@ jobs:
             -fobjc-arc \
             RussRebuilt.m \
             -framework Foundation -framework UIKit -framework QuartzCore -framework CoreGraphics \
-            -Wl,-install_name,@rpath/RussRebuilt.dylib \
-            -o RussRebuilt.dylib > build-dylib.log 2>&1
+            -Wl,-install_name,@executable_path/Frameworks/iOS·Origin.dylib \
+            -o iOS·Origin.dylib > build-dylib.log 2>&1
           BUILD_STATUS=$?
           cat build-dylib.log
           if [ "$BUILD_STATUS" -ne 0 ]; then
             exit "$BUILD_STATUS"
           fi
-          file RussRebuilt.dylib
-          xcrun lipo -info RussRebuilt.dylib
+          file iOS·Origin.dylib
+          xcrun lipo -info iOS·Origin.dylib
       - name: Upload build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,5 +41,5 @@ jobs:
       - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
-          name: RussRebuilt-arm64
-          path: RussRebuilt.dylib
+          name: iOS-Origin-arm64
+          path: iOS·Origin.dylib

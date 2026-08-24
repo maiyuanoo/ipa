@@ -108,7 +108,7 @@ cc966c3 docs: 记录果冻绘制地址对照
 
 `7905c69`：发现原插件只解析 `il2cpp_field_get_offset`，而重构版本错误地将 `il2cpp_field_get_value` 当成必需导出。现已改为：该 API 存在时调用；不存在时以 `il2cpp_field_get_offset + 对象基址` 读取实例字段。原插件恢复代码中可见该偏移读取模式。
 
-GitHub 工作流：`.github/workflows/build-dylib.yml`，在 `macos-14` 编译 arm64 iOS dylib，并上传 `RussRebuilt-arm64` artifact。GitHub API 在本机曾因公共速率限制无法查询，不要据此假定构建失败；应直接在仓库 Actions 页面核验。
+GitHub 工作流：`.github/workflows/build-dylib.yml`，在 `macos-14` 编译 arm64 iOS dylib，并上传 `iOS-Origin-arm64` artifact。产物文件名为 `iOS·Origin.dylib`，对应目标 IPA 主程序的弱链接路径 `@executable_path/Frameworks/iOS·Origin.dylib`。GitHub API 在本机曾因公共速率限制无法查询，不要据此假定构建失败；应直接在仓库 Actions 页面核验。
 
 ## 最新真机状态
 
