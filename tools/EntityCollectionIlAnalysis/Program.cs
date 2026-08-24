@@ -62,11 +62,42 @@ if (!hasEntityCollectionField || !snapshotInstructions.Any(instruction => instru
     return 5;
 }
 
+var managerInstanceField = targetType.Definition.GetFields()
+    .Select(handle => metadata.GetFieldDefinition(handle))
+    .FirstOrDefault(field => metadata.GetString(field.Name) == "BHOAGIJIMMJ");
+var entityType = metadata.TypeDefinitions
+    .Select(handle => (Handle: handle, Definition: metadata.GetTypeDefinition(handle)))
+    .FirstOrDefault(item => metadata.GetString(item.Definition.Name) == "DIGLCECMPAB");
+
+if (managerInstanceField.Name.IsNil || !managerInstanceField.Attributes.HasFlag(FieldAttributes.Static) || entityType.Handle.IsNil)
+{
+    Console.Error.WriteLine("未找到实体绘制所需的静态管理器字段或实体类型。");
+    return 6;
+}
+
+var entityFieldNames = entityType.Definition.GetFields()
+    .Select(handle => metadata.GetString(metadata.GetFieldDefinition(handle).Name))
+    .ToHashSet(StringComparer.Ordinal);
+var entityMethodNames = entityType.Definition.GetMethods()
+    .Select(handle => metadata.GetString(metadata.GetMethodDefinition(handle).Name))
+    .ToHashSet(StringComparer.Ordinal);
+var requiredEntityFields = new[] { "<EPOOFKEKHEN>k__BackingField", "LCBPLHGAECL", "OOKGDEJMAKP" };
+var missingEntityFields = requiredEntityFields.Where(field => !entityFieldNames.Contains(field)).ToArray();
+
+if (!entityMethodNames.Contains("MCCJPBBPEMK") || missingEntityFields.Length > 0)
+{
+    Console.Error.WriteLine("DIGLCECMPAB 不符合已确认的 Transform 或名称读取契约。");
+    if (!entityMethodNames.Contains("MCCJPBBPEMK")) Console.Error.WriteLine("缺少 Transform 方法: MCCJPBBPEMK。");
+    if (missingEntityFields.Length > 0) Console.Error.WriteLine("缺少实体字段: " + string.Join(", ", missingEntityFields));
+    return 7;
+}
+
 Console.WriteLine("# OEPJBOIGGPO 实体集合 IL 审计");
 Console.WriteLine();
 Console.WriteLine("输入程序集: UpdateScript_500.dll");
 Console.WriteLine("审计字段: " + string.Join(", ", trackedFields.Values));
 Console.WriteLine("快照契约: JHDAFFFAKCK 从 NLMAFONOFFH.Values 构造实体列表（已验证）");
+Console.WriteLine("绘制读取契约: BHOAGIJIMMJ、DIGLCECMPAB、MCCJPBBPEMK 和名称字段（已验证）");
 
 foreach (var methodHandle in targetType.Definition.GetMethods())
 {
