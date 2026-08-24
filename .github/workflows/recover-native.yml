@@ -122,7 +122,18 @@ jobs:
           JELLY_DRAWING_STATUS=$?
           printf '%s\n' "$JELLY_DRAWING_STATUS" > analysis-output/jelly-drawing-ghidra.exit-code
           cat analysis-output/jelly-drawing-ghidra.log
-          exit 0
+          test "$JELLY_DRAWING_STATUS" -eq 0
+          test -s analysis-output/JellyDrawingRecovered.c
+      - name: Upload Jelly recovery diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jelly-drawing-recovery
+          path: |
+            analysis-output/jelly-drawing-ghidra.log
+            analysis-output/jelly-drawing-ghidra.exit-code
+            analysis-output/JellyDrawingRecovered.c
+          if-no-files-found: warn
       - name: Publish recovery report
         run: |
           git config user.name github-actions[bot]
