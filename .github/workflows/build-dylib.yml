@@ -21,7 +21,7 @@ jobs:
             -fPIC -dynamiclib -fvisibility=hidden \
             -fobjc-arc \
             RussRebuilt.m \
-            -framework Foundation -framework UIKit -framework QuartzCore \
+            -framework Foundation -framework UIKit -framework QuartzCore -framework CoreGraphics \
             -Wl,-install_name,@rpath/RussRebuilt.dylib \
             -o RussRebuilt.dylib > build-dylib.log 2>&1
           BUILD_STATUS=$?
