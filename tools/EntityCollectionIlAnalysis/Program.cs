@@ -28,10 +28,45 @@ var trackedFields = targetType.Definition.GetFields()
     .Where(field => field.Name is "NLMAFONOFFH" or "CMPKHKEGCKK" or "IMDDIDNCIPO")
     .ToDictionary(field => field.Token, field => field.Name);
 
+var snapshotMethod = targetType.Definition.GetMethods()
+    .Select(handle => (Handle: handle, Definition: metadata.GetMethodDefinition(handle)))
+    .FirstOrDefault(item => metadata.GetString(item.Definition.Name) == "JHDAFFFAKCK");
+
+if (snapshotMethod.Handle.IsNil || snapshotMethod.Definition.RelativeVirtualAddress == 0)
+{
+    Console.Error.WriteLine("未找到实体快照方法 JHDAFFFAKCK。");
+    return 4;
+}
+
+var snapshotInstructions = ReadInstructions(
+    peReader.GetMethodBody(snapshotMethod.Definition.RelativeVirtualAddress).GetILBytes() ?? []).ToArray();
+var snapshotMemberNames = snapshotInstructions
+    .Where(instruction => instruction.Operand is int token && IsMetadataToken(token))
+    .Select(instruction => ResolveToken(metadata, (int)instruction.Operand!))
+    .ToHashSet(StringComparer.Ordinal);
+var hasEntityCollectionField = snapshotInstructions.Any(instruction =>
+    instruction.OpCode == OpCodes.Ldfld && instruction.Operand is int token &&
+    trackedFields.TryGetValue(token, out var fieldName) && fieldName == "NLMAFONOFFH");
+var requiredSnapshotMembers = new[] { "member get_Values", "member GetEnumerator", "member get_Current", "member Add" };
+var missingSnapshotMembers = requiredSnapshotMembers
+    .Where(member => !snapshotMemberNames.Contains(member))
+    .ToArray();
+
+if (!hasEntityCollectionField || !snapshotInstructions.Any(instruction => instruction.OpCode == OpCodes.Newobj) ||
+    missingSnapshotMembers.Length > 0)
+{
+    Console.Error.WriteLine("JHDAFFFAKCK 不符合 NLMAFONOFFH.Values 实体快照契约。");
+    if (!hasEntityCollectionField) Console.Error.WriteLine("缺少字段读取: NLMAFONOFFH。");
+    if (!snapshotInstructions.Any(instruction => instruction.OpCode == OpCodes.Newobj)) Console.Error.WriteLine("缺少列表构造。");
+    if (missingSnapshotMembers.Length > 0) Console.Error.WriteLine("缺少成员调用: " + string.Join(", ", missingSnapshotMembers));
+    return 5;
+}
+
 Console.WriteLine("# OEPJBOIGGPO 实体集合 IL 审计");
 Console.WriteLine();
 Console.WriteLine("输入程序集: UpdateScript_500.dll");
 Console.WriteLine("审计字段: " + string.Join(", ", trackedFields.Values));
+Console.WriteLine("快照契约: JHDAFFFAKCK 从 NLMAFONOFFH.Values 构造实体列表（已验证）");
 
 foreach (var methodHandle in targetType.Definition.GetMethods())
 {
