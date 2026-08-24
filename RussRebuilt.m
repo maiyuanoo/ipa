@@ -99,6 +99,7 @@ static void *gDrawingItemNameField;
 static void *gDrawingPrefabNameField;
 static const MethodInfo *gDrawingEntityTransformMethod;
 static const MethodInfo *gDrawingEntitySnapshotMethod;
+static NSString *gDrawingRuntimeStatus;
 
 static void *gUnityFrameworkHandle;
 static uintptr_t gUnityFrameworkBase;
@@ -1179,7 +1180,7 @@ static BOOL EnsureDrawingApi(void) {
     if (gDrawingPrefabConfigField == NULL) {
         gDrawingPrefabConfigField = gIl2CppClassGetFieldFromName(gDrawingEntityKlass, "OOKGDEJMAKP");
     }
-    return gDrawingManagerInstanceField != NULL && gDrawingEntityDictionaryField != NULL &&
+    return gDrawingManagerInstanceField != NULL &&
         gDrawingEntitySnapshotMethod != NULL &&
         (gDrawingEntityTransformMethod != NULL || gDrawingEntityTransformField != NULL);
 }
@@ -1216,24 +1217,46 @@ static NSString *GetDrawingEntityName(Il2CppObject *entity) {
 }
 
 static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshots, NSUInteger capacity) {
-    if (snapshots == NULL || capacity == 0 || !NSThread.isMainThread || !EnsureDrawingApi()) return 0;
+    if (snapshots == NULL || capacity == 0 || !NSThread.isMainThread) return 0;
+    if (!EnsureDrawingApi()) {
+        gDrawingRuntimeStatus = @"热更接口未就绪";
+        return 0;
+    }
     Il2CppObject *manager = NULL;
     gIl2CppFieldStaticGetValue(gDrawingManagerInstanceField, &manager);
-    if (manager == NULL) return 0;
+    if (manager == NULL) {
+        gDrawingRuntimeStatus = @"实体管理器未创建";
+        return 0;
+    }
 
     Il2CppObject *exception = NULL;
     Il2CppObject *entities = gIl2CppRuntimeInvoke(gDrawingEntitySnapshotMethod, manager, NULL, &exception);
-    if (exception != NULL || entities == NULL) return 0;
+    if (exception != NULL || entities == NULL) {
+        gDrawingRuntimeStatus = @"实体快照调用失败";
+        return 0;
+    }
     void *listKlass = *(void **)entities;
-    if (listKlass == NULL) return 0;
+    if (listKlass == NULL) {
+        gDrawingRuntimeStatus = @"实体快照类型无效";
+        return 0;
+    }
     const MethodInfo *countMethod = gIl2CppClassGetMethodFromName(listKlass, "get_Count", 0);
     const MethodInfo *itemMethod = gIl2CppClassGetMethodFromName(listKlass, "get_Item", 1);
-    if (countMethod == NULL || itemMethod == NULL) return 0;
+    if (countMethod == NULL || itemMethod == NULL) {
+        gDrawingRuntimeStatus = @"实体列表接口未就绪";
+        return 0;
+    }
     exception = NULL;
     Il2CppObject *countBox = gIl2CppRuntimeInvoke(countMethod, entities, NULL, &exception);
-    if (exception != NULL || countBox == NULL) return 0;
+    if (exception != NULL || countBox == NULL) {
+        gDrawingRuntimeStatus = @"实体数量读取失败";
+        return 0;
+    }
     int *entityCount = (int *)gIl2CppObjectUnbox(countBox);
-    if (entityCount == NULL || *entityCount <= 0) return 0;
+    if (entityCount == NULL || *entityCount <= 0) {
+        gDrawingRuntimeStatus = @"热更快照为 0 个实体";
+        return 0;
+    }
 
     NSUInteger snapshotCount = 0;
     NSUInteger limit = MIN(capacity, (NSUInteger)*entityCount);
@@ -1255,6 +1278,7 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
         snapshots[snapshotCount].name = GetDrawingEntityName(entity);
         snapshotCount++;
     }
+    gDrawingRuntimeStatus = [NSString stringWithFormat:@"快照 %d 个，可绘制 %lu 个", *entityCount, (unsigned long)snapshotCount];
     return snapshotCount;
 }
 /*JHDAFFFAKCK 的热更 IL 已证实从 NLMAFONOFFH.Values 复制实体列表；避免反射调用 ValueCollection.Enumerator 值类型方法。*/
@@ -1304,6 +1328,7 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
 @property(nonatomic, strong) CADisplayLink *drawingDisplayLink;
 @property(nonatomic, strong) UIView *drawingOverlay;
 @property(nonatomic, strong) NSMutableArray<RussOutlinedLabel *> *drawingLabels;
+@property(nonatomic, assign) NSUInteger drawingFrameTick;
 @property(nonatomic, strong) CADisplayLink *runtimeDisplayLink;
 @property(nonatomic, assign) NSUInteger runtimeFrameTick;
 @property(nonatomic, assign) BOOL lifecycleObserversInstalled;
@@ -2007,6 +2032,7 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
     self.drawingOverlay.backgroundColor = UIColor.clearColor;
     self.drawingOverlay.userInteractionEnabled = NO;
     self.drawingOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.drawingFrameTick = 0;
     self.drawingLabels = [NSMutableArray arrayWithCapacity:kRussDrawingLabelCapacity];
     for (NSInteger index = 0; index < kRussDrawingLabelCapacity; index++) {
         RussOutlinedLabel *label = [[RussOutlinedLabel alloc] initWithFrame:CGRectMake(-160.0, -24.0, 160.0, 18.0)];
@@ -2035,14 +2061,24 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
 
 - (void)updateDrawingOverlay {
     if (self.drawingOverlay == nil || self.drawingLabels == nil || !NSThread.isMainThread) return;
+    self.drawingFrameTick++;
     for (RussOutlinedLabel *label in self.drawingLabels) label.hidden = YES;
     Il2CppObject *camera = GetMainCameraObject();
-    if (camera == NULL) return;
+    if (camera == NULL) {
+        if (self.drawingFrameTick % 30 == 1) [self setCardHint:@"drawing" text:@"相机未就绪"];
+        return;
+    }
     float cameraX = 0.0f, cameraY = 0.0f, cameraZ = 0.0f;
-    if (!GetObjectWorldPosition(camera, &cameraX, &cameraY, &cameraZ)) return;
+    if (!GetObjectWorldPosition(camera, &cameraX, &cameraY, &cameraZ)) {
+        if (self.drawingFrameTick % 30 == 1) [self setCardHint:@"drawing" text:@"相机坐标未就绪"];
+        return;
+    }
 
     RussDrawingEntitySnapshot snapshots[kRussDrawingSnapshotCapacity] = {0};
     NSUInteger snapshotCount = CopyDrawingEntitySnapshots(snapshots, kRussDrawingSnapshotCapacity);
+    if (self.drawingFrameTick % 30 == 1) {
+        [self setCardHint:@"drawing" text:gDrawingRuntimeStatus ?: @"正在读取热更实体"];
+    }
     CGFloat width = self.drawingOverlay.bounds.size.width;
     CGFloat height = self.drawingOverlay.bounds.size.height;
     NSUInteger visibleLabelIndex = 0;
