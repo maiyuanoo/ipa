@@ -297,10 +297,21 @@ static Il2CppObject *GetCameraFollowInstance(void) {
 }
 /*camerafollow单例获取:静态字段→get_instance 双路径照原版顺序 每次现取不缓存实例防GC后野指针*/
 
+static BOOL ReadInstanceField(Il2CppObject *instance, void *field, void *value, size_t valueSize) {
+    if (instance == NULL || field == NULL || value == NULL || valueSize == 0) return NO;
+    if (gIl2CppFieldGetValue != NULL) {
+        gIl2CppFieldGetValue(instance, field, value);
+        return YES;
+    }
+    if (gIl2CppFieldGetOffset == NULL) return NO;
+    size_t offset = gIl2CppFieldGetOffset(field);
+    if (offset < 0x10 || offset > 0x3fff) return NO;
+    memcpy(value, (const uint8_t *)instance + offset, valueSize);
+    return YES;
+}
+
 static BOOL ReadCameraFollowFloat(Il2CppObject *instance, void *field, float *value) {
-    if (instance == NULL || field == NULL || value == NULL || gIl2CppFieldGetValue == NULL) return NO;
-    gIl2CppFieldGetValue(instance, field, value);
-    return isfinite(*value);
+    return ReadInstanceField(instance, field, value, sizeof(*value)) && isfinite(*value);
 }
 
 static BOOL WriteCameraFollowFloat(Il2CppObject *instance, void *field, float value) {
@@ -896,7 +907,7 @@ static NSUInteger ApplyCoffinEntryList(Il2CppObject *listObject, float alphaFact
 }
 
 static NSUInteger ApplyCoffinVisualState(void) {
-    if (!EnsureIl2CppThread() || gIl2CppFieldGetValue == NULL) return 0;
+    if (!EnsureIl2CppThread()) return 0;
     if (gCoffinSourceKlass == NULL) gCoffinSourceKlass = FindClassInAllAssemblies("", "EAKGFFFBKDG");
     if (gCoffinPageKlass == NULL) gCoffinPageKlass = FindClassInAllAssemblies("", "GAKFOICFFGF");
     if (gCoffinEntryKlass == NULL) gCoffinEntryKlass = FindClassInAllAssemblies("", "JJKENHNKEJP");
@@ -925,7 +936,7 @@ static NSUInteger ApplyCoffinVisualState(void) {
     if (exception != NULL || !ValidateInstanceOfClass(entry, gCoffinEntryKlass)) return 0;
 
     Il2CppObject *listObject = NULL;
-    gIl2CppFieldGetValue(entry, gCoffinEntryListField, &listObject);
+    if (!ReadInstanceField(entry, gCoffinEntryListField, &listObject, sizeof(listObject))) return 0;
     return ApplyCoffinEntryList(listObject, 1.0f - gDemagnetizationFactor);
 }
 /*Russ 0x17720：目标 Image 的 alpha = 原 alpha × (1 - 强度)，每次仅处理一个分页。*/
@@ -1004,7 +1015,7 @@ static NSUInteger SetIslandRouteVisible(BOOL visible) {
     if (gRouteLineRendererField == NULL) {
         gRouteLineRendererField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "lineRender");
         gRoutePointsListField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "pointsList");
-        if (gRouteLineRendererField == NULL || gRoutePointsListField == NULL || gIl2CppFieldGetValue == NULL) return 0;
+        if (gRouteLineRendererField == NULL || gRoutePointsListField == NULL) return 0;
     }
     Il2CppArray *result = ScanObjectsOfClass(gFindPathLineCtrlKlass, YES);
     if (result == NULL) return 0;
@@ -1015,8 +1026,8 @@ static NSUInteger SetIslandRouteVisible(BOOL visible) {
         if (routeController == NULL) continue;
         Il2CppObject *lineRenderer = NULL;
         Il2CppObject *pointsList = NULL;
-        gIl2CppFieldGetValue(routeController, gRouteLineRendererField, &lineRenderer);
-        gIl2CppFieldGetValue(routeController, gRoutePointsListField, &pointsList);
+        if (!ReadInstanceField(routeController, gRouteLineRendererField, &lineRenderer, sizeof(lineRenderer)) ||
+            !ReadInstanceField(routeController, gRoutePointsListField, &pointsList, sizeof(pointsList))) return 0;
         if (ValidateInstanceOfClass(lineRenderer, gLineRendererKlass) && pointsList != NULL) touched++;
     }
     return touched;
@@ -1031,7 +1042,7 @@ static NSUInteger CopyIslandRouteWorldPoints(float *output, NSUInteger capacity)
     }
     if (gRoutePointsListField == NULL) {
         gRoutePointsListField = gIl2CppClassGetFieldFromName(gFindPathLineCtrlKlass, "pointsList");
-        if (gRoutePointsListField == NULL || gIl2CppFieldGetValue == NULL) return 0;
+        if (gRoutePointsListField == NULL) return 0;
     }
     Il2CppArray *controllers = ScanObjectsOfClass(gFindPathLineCtrlKlass, YES);
     if (controllers == NULL) return 0;
@@ -1042,7 +1053,7 @@ static NSUInteger CopyIslandRouteWorldPoints(float *output, NSUInteger capacity)
         Il2CppObject *controller = controllers->objects[index];
         Il2CppObject *pointsList = NULL;
         if (controller == NULL) continue;
-        gIl2CppFieldGetValue(controller, gRoutePointsListField, &pointsList);
+        if (!ReadInstanceField(controller, gRoutePointsListField, &pointsList, sizeof(pointsList))) return 0;
         int32_t count = 0;
         if (pointsList == NULL || !ReadProcessMemory((uintptr_t)pointsList + 0x18, &count, sizeof(count)) ||
             count < 2 || count > 4096 || count <= bestCount) continue;
@@ -1136,7 +1147,7 @@ static NSString *CopyIl2CppString(Il2CppObject *object) {
 /*热更 String 采用 UTF-16；限制标签长度，防止异常对象导致覆盖层分配过大。*/
 
 static NSString *GetDrawingConfigName(Il2CppObject *config, void **fieldCache) {
-    if (config == NULL || fieldCache == NULL || gIl2CppFieldGetValue == NULL) return nil;
+    if (config == NULL || fieldCache == NULL) return nil;
     void *klass = *(void **)config;
     if (klass == NULL) return nil;
     if (*fieldCache == NULL && gIl2CppClassGetFieldFromName != NULL) {
@@ -1144,13 +1155,13 @@ static NSString *GetDrawingConfigName(Il2CppObject *config, void **fieldCache) {
     }
     if (*fieldCache == NULL) return nil;
     Il2CppObject *name = NULL;
-    gIl2CppFieldGetValue(config, *fieldCache, &name);
+    if (!ReadInstanceField(config, *fieldCache, &name, sizeof(name))) return nil;
     return CopyIl2CppString(name);
 }
 
 static BOOL EnsureDrawingApi(void) {
-    if (!EnsureIl2CppThread() || gIl2CppFieldGetValue == NULL ||
-        gIl2CppFieldStaticGetValue == NULL || gIl2CppObjectUnbox == NULL) return NO;
+    if (!EnsureIl2CppThread() || gIl2CppFieldStaticGetValue == NULL ||
+        gIl2CppObjectUnbox == NULL) return NO;
     if (gDrawingManagerKlass == NULL) {
         gDrawingManagerKlass = FindClassInAllAssemblies("", "OEPJBOIGGPO");
         if (gDrawingManagerKlass == NULL) return NO;
@@ -1195,7 +1206,7 @@ static Il2CppObject *GetDrawingEntityTransform(Il2CppObject *entity) {
     }
     if (gDrawingEntityTransformField == NULL) return NULL;
     Il2CppObject *transform = NULL;
-    gIl2CppFieldGetValue(entity, gDrawingEntityTransformField, &transform);
+    if (!ReadInstanceField(entity, gDrawingEntityTransformField, &transform, sizeof(transform))) return NULL;
     return transform;
 }
 
@@ -1203,13 +1214,13 @@ static NSString *GetDrawingEntityName(Il2CppObject *entity) {
     if (entity == NULL) return @"物资";
     Il2CppObject *itemConfig = NULL;
     if (gDrawingItemConfigField != NULL) {
-        gIl2CppFieldGetValue(entity, gDrawingItemConfigField, &itemConfig);
+        ReadInstanceField(entity, gDrawingItemConfigField, &itemConfig, sizeof(itemConfig));
         NSString *name = GetDrawingConfigName(itemConfig, &gDrawingItemNameField);
         if (name.length > 0) return name;
     }
     Il2CppObject *prefabConfig = NULL;
     if (gDrawingPrefabConfigField != NULL) {
-        gIl2CppFieldGetValue(entity, gDrawingPrefabConfigField, &prefabConfig);
+        ReadInstanceField(entity, gDrawingPrefabConfigField, &prefabConfig, sizeof(prefabConfig));
         NSString *name = GetDrawingConfigName(prefabConfig, &gDrawingPrefabNameField);
         if (name.length > 0) return name;
     }
