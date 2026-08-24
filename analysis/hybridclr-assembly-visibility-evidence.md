@@ -32,4 +32,14 @@ domain_get -> domain_get_assemblies -> assembly_get_image -> class_from_name
 
 `GD.dylib` 的恢复结果不使用这条链做其自身功能初始化，只能说明两个原插件的实现策略不同，不能否定上述原插件链。
 
-下一步所需证据是运行时确认 `UpdateScript_500` 是否已经出现在程序集列表，或恢复 `ScriptsStart.LoadDll` 调用后的 HybridCLR 镜像注册实现。源码在此之前保持不变。
+## ScriptsStart.LoadDll 控制流
+
+`dump.cs` 给出 `ScriptsStart.LoadDll(AssetBundle ab, AssetBundle aotAB)` 的 RVA 为 `0x4357998`。目标 UnityFramework 中该地址的 arm64 函数已直接反汇编核验：
+
+1. 入口首先以 `aotAB` 参数进入 AOT 元数据加载分支，并调用本类的 `LoadMetadataForAOTAssemblies` 实现（RVA `0x435755c`）。
+2. 后续从主脚本包取得程序集字节，经过托管程序集加载流程后才遍历脚本资源。
+3. 任何一个阶段返回空对象或失败状态都会直接退出 `LoadDll`，不会把热更程序集注册到 `il2cpp_domain_get_assemblies` 的结果中。
+
+目标 `il2cpp_domain_get_assemblies` 内部函数会遍历程序集注册链，仅复制状态字段非零的条目到返回向量。由此可得：`OEPJBOIGGPO` 未找到时，安全且唯一的下一步运行时判别是检查 `UpdateScript_500` 是否已注册；不能改用未注册程序集的内存地址、其他集合或字段。
+
+当前 `FindClassInAllAssemblies` 未缓存空结果，并在每次绘制刷新时重试。因此它已经满足热更在稍后完成注册的时序要求；源码在得到实际失败阶段前保持不变。
