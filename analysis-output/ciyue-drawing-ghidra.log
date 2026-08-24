@@ -5,14 +5,14 @@ INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1
 INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
 INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1210 ms) (ClassSearcher)  
+INFO  Class search complete (1046 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
 INFO  Starting cache cleanup: /var/tmp/runner-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
 INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
-INFO  Headless startup complete (6256 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (6786 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
 WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
@@ -107,40 +107,40 @@ ERROR VarnodeContext: out of address spaces at @0009b390 for: d19-0009b390 (Varn
 ERROR VarnodeContext: out of address spaces at @00180544 for: d26-00180544 (VarnodeContext)  
 INFO  -----------------------------------------------------
     AARCH64 ELF PLT Thunks                     0.000 secs
-    ASCII Strings                              0.631 secs
-    Apply Data Archives                        0.467 secs
-    Basic Constant Reference Analyzer         31.019 secs
+    ASCII Strings                              0.668 secs
+    Apply Data Archives                        0.391 secs
+    Basic Constant Reference Analyzer         31.837 secs
     CFStrings                                  0.077 secs
-    Call Convention ID                         2.973 secs
-    Call-Fixup Installer                       0.137 secs
-    Create Address Tables                      0.743 secs
-    Create Address Tables - One Time           0.020 secs
-    Create Function                            1.976 secs
-    Data Reference                             0.767 secs
-    Decompiler Switch Analysis                10.663 secs
-    Decompiler Switch Analysis - One Time     40.206 secs
-    Demangler GNU                              0.270 secs
-    Disassemble                                0.447 secs
-    Disassemble Entry Points                   0.052 secs
-    Embedded Media                             0.057 secs
-    External Entry References                  0.000 secs
-    Function ID                                0.025 secs
-    Function Start Search                      0.293 secs
-    Function Start Search After Code           0.166 secs
-    Function Start Search After Data           0.394 secs
-    Function Start Search delayed - One Time   0.124 secs
-    Mach-O Function Starts                     0.016 secs
-    Non-Returning Functions - Discovered       1.076 secs
-    Non-Returning Functions - Known            0.006 secs
-    Objective-C Message Analyzer             171.164 secs
-    Objective-C Type Metadata Analyzer        10.058 secs
-    Reference                                  0.868 secs
-    Shared Return Calls                        1.006 secs
-    Stack                                     35.564 secs
-    Subroutine References                      0.561 secs
-    Subroutine References - One Time           0.001 secs
+    Call Convention ID                         3.003 secs
+    Call-Fixup Installer                       0.111 secs
+    Create Address Tables                      0.741 secs
+    Create Address Tables - One Time           0.015 secs
+    Create Function                            2.051 secs
+    Data Reference                             0.753 secs
+    Decompiler Switch Analysis                10.823 secs
+    Decompiler Switch Analysis - One Time     41.903 secs
+    Demangler GNU                              0.293 secs
+    Disassemble                                0.504 secs
+    Disassemble Entry Points                   0.061 secs
+    Embedded Media                             0.094 secs
+    External Entry References                  0.001 secs
+    Function ID                                0.024 secs
+    Function Start Search                      0.220 secs
+    Function Start Search After Code           0.279 secs
+    Function Start Search After Data           0.478 secs
+    Function Start Search delayed - One Time   0.044 secs
+    Mach-O Function Starts                     0.015 secs
+    Non-Returning Functions - Discovered       1.162 secs
+    Non-Returning Functions - Known            0.009 secs
+    Objective-C Message Analyzer             170.624 secs
+    Objective-C Type Metadata Analyzer        10.736 secs
+    Reference                                  0.996 secs
+    Shared Return Calls                        0.899 secs
+    Stack                                     35.284 secs
+    Subroutine References                      0.562 secs
+    Subroutine References - One Time           0.002 secs
 -----------------------------------------------------
-     Total Time   311 secs
+     Total Time   314 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/Ciyue0818.dylib (HeadlessAnalyzer)  
