@@ -5,12 +5,12 @@ INFO  Using log config file: jar:file:/home/runner/work/_temp/ghidra/ghidra_12.1
 INFO  Using log file: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/application.log (LoggingInitialization)  
 INFO  Loading user preferences: /home/runner/.config/ghidra/ghidra_12.1.3_PUBLIC/preferences (Preferences)  
 INFO  Searching for classes... (ClassSearcher)  
-INFO  Class search complete (1110 ms) (ClassSearcher)  
+INFO  Class search complete (1080 ms) (ClassSearcher)  
 INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
 INFO  Initializing Random Number Generator... (SecureRandomFactory)  
 INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
 INFO  Trust manager disabled, cacerts have not been set (DefaultTrustManagerFactory)  
-INFO  Headless startup complete (3822 ms) (AnalyzeHeadless)  
+INFO  Headless startup complete (3760 ms) (AnalyzeHeadless)  
 INFO  Class searcher loaded 177 extension points (88 false positives) (ClassSearcher)  
 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
 WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
@@ -41,10 +41,10 @@ INFO  HEADLESS Script Paths:
     /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
     /home/runner/work/_temp/ghidra/ghidra_12.1.3_PUBLIC/Ghidra/Processors/8051/ghidra_scripts (HeadlessAnalyzer)  
 INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
-INFO  Creating temporary project: /home/runner/work/_temp/ghidra-project/JellyDrawingRecovery (HeadlessAnalyzer)  
-INFO  Creating project: /home/runner/work/_temp/ghidra-project/JellyDrawingRecovery (DefaultProject)  
+INFO  Creating temporary project: /home/runner/work/_temp/ghidra-project/JellyRuntimeRecovery (HeadlessAnalyzer)  
+INFO  Creating project: /home/runner/work/_temp/ghidra-project/JellyRuntimeRecovery (DefaultProject)  
 INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
-INFO       project: /home/runner/work/_temp/ghidra-project/JellyDrawingRecovery (HeadlessAnalyzer)  
+INFO       project: /home/runner/work/_temp/ghidra-project/JellyRuntimeRecovery (HeadlessAnalyzer)  
 INFO  IMPORTING: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
 WARN  Using unknown opinion: Mac OS X Mach-O, AARCH64:LE:64:v8A:default (LcsHintLoadSpecChooser)  
 INFO  Using Loader: Mac OS X Mach-O (ProgramLoader)  
@@ -106,50 +106,48 @@ ERROR VarnodeContext: out of address spaces at @0007854c for: d18-0007854c (Varn
 ERROR VarnodeContext: out of address spaces at @001f8dfc for: d30-001f8dfc (VarnodeContext)  
 ERROR VarnodeContext: out of address spaces at @0017919c for: d26-0017919c (VarnodeContext)  
 INFO  -----------------------------------------------------
-    AARCH64 ELF PLT Thunks                     0.001 secs
-    ASCII Strings                              0.716 secs
-    Apply Data Archives                        0.293 secs
-    Basic Constant Reference Analyzer         25.991 secs
-    CFStrings                                  0.061 secs
-    Call Convention ID                         3.470 secs
-    Call-Fixup Installer                       0.111 secs
-    Create Address Tables                      0.687 secs
+    AARCH64 ELF PLT Thunks                     0.000 secs
+    ASCII Strings                              0.621 secs
+    Apply Data Archives                        0.480 secs
+    Basic Constant Reference Analyzer         25.990 secs
+    CFStrings                                  0.049 secs
+    Call Convention ID                         3.566 secs
+    Call-Fixup Installer                       0.245 secs
+    Create Address Tables                      0.751 secs
     Create Address Tables - One Time           0.027 secs
-    Create Function                            2.046 secs
-    Data Reference                             0.731 secs
-    Decompiler Switch Analysis                 9.720 secs
-    Decompiler Switch Analysis - One Time     40.514 secs
-    Demangler GNU                              0.256 secs
-    Disassemble                                0.379 secs
-    Disassemble Entry Points                   0.052 secs
-    Embedded Media                             0.098 secs
+    Create Function                            2.189 secs
+    Data Reference                             0.665 secs
+    Decompiler Switch Analysis                 9.468 secs
+    Decompiler Switch Analysis - One Time     40.013 secs
+    Demangler GNU                              0.285 secs
+    Disassemble                                0.398 secs
+    Disassemble Entry Points                   0.044 secs
+    Embedded Media                             0.062 secs
     External Entry References                  0.000 secs
-    Function ID                                0.022 secs
-    Function Start Search                      0.249 secs
-    Function Start Search After Code           0.146 secs
-    Function Start Search After Data           0.220 secs
-    Function Start Search delayed - One Time   0.043 secs
-    Mach-O Function Starts                     0.015 secs
-    Non-Returning Functions - Discovered       1.103 secs
-    Non-Returning Functions - Known            0.005 secs
-    Objective-C Message Analyzer             167.138 secs
-    Objective-C Type Metadata Analyzer        10.381 secs
-    Reference                                  0.752 secs
-    Shared Return Calls                        0.959 secs
-    Stack                                     26.046 secs
-    Subroutine References                      0.529 secs
+    Function ID                                0.038 secs
+    Function Start Search                      0.252 secs
+    Function Start Search After Code           0.200 secs
+    Function Start Search After Data           0.368 secs
+    Function Start Search delayed - One Time   0.132 secs
+    Mach-O Function Starts                     0.020 secs
+    Non-Returning Functions - Discovered       1.210 secs
+    Non-Returning Functions - Known            0.009 secs
+    Objective-C Message Analyzer             167.996 secs
+    Objective-C Type Metadata Analyzer        10.654 secs
+    Reference                                  0.893 secs
+    Shared Return Calls                        0.924 secs
+    Stack                                     29.041 secs
+    Subroutine References                      0.609 secs
     Subroutine References - One Time           0.002 secs
 -----------------------------------------------------
-     Total Time   292 secs
+     Total Time   297 secs
 -----------------------------------------------------
  (AutoAnalysisManager)  
 INFO  REPORT: Analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
-INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/JellyDrawingRecovered.c' 'jelly'  (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: RecoverNative.java 'analysis-output/JellyRuntimeRecovered.c' 'runtime'  (HeadlessAnalyzer)  
 INFO  SCRIPT: /home/runner/work/ipa/ipa/tools/ghidra/RecoverNative.java (HeadlessAnalyzer)  
-WARN  Decompiling 0057f801, pcode error at 0057f801: Invalid instruction address (improperly aligned) (DecompileCallback)  
-WARN  Decompiling 00584500, pcode error at 00584500: Unable to disassemble EXTERNAL block location: 00584500 (DecompileCallback)  
 INFO  ANALYZING changes made by post scripts: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
 INFO  REPORT: Post-analysis succeeded for file: file:///home/runner/work/ipa/ipa/analysis/input/GD.dylib (HeadlessAnalyzer)  
 INFO  /GD.dylib: file created (runner) (LocalFileSystem)  
-INFO  REPORT: Save succeeded for: /GD.dylib (JellyDrawingRecovery:/GD.dylib) (HeadlessAnalyzer)  
+INFO  REPORT: Save succeeded for: /GD.dylib (JellyRuntimeRecovery:/GD.dylib) (HeadlessAnalyzer)  
 INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
