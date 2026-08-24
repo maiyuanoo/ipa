@@ -124,6 +124,21 @@ jobs:
           cat analysis-output/jelly-drawing-ghidra.log
           test "$JELLY_DRAWING_STATUS" -eq 0
           test -s analysis-output/JellyDrawingRecovered.c
+      - name: Recover Jelly runtime resolution pseudocode
+        run: |
+          mkdir -p analysis-output "$RUNNER_TEMP/ghidra-project"
+          set +e
+          "$ANALYZER_PATH" "$RUNNER_TEMP/ghidra-project" JellyRuntimeRecovery \
+            -import analysis/input/GD.dylib \
+            -processor AARCH64:LE:64:v8A \
+            -scriptPath tools/ghidra \
+            -postScript RecoverNative.java analysis-output/JellyRuntimeRecovered.c runtime \
+            -deleteProject > analysis-output/jelly-runtime-ghidra.log 2>&1
+          JELLY_RUNTIME_STATUS=$?
+          printf '%s\n' "$JELLY_RUNTIME_STATUS" > analysis-output/jelly-runtime-ghidra.exit-code
+          cat analysis-output/jelly-runtime-ghidra.log
+          test "$JELLY_RUNTIME_STATUS" -eq 0
+          test -s analysis-output/JellyRuntimeRecovered.c
       - name: Upload Jelly recovery diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -133,6 +148,9 @@ jobs:
             analysis-output/jelly-drawing-ghidra.log
             analysis-output/jelly-drawing-ghidra.exit-code
             analysis-output/JellyDrawingRecovered.c
+            analysis-output/jelly-runtime-ghidra.log
+            analysis-output/jelly-runtime-ghidra.exit-code
+            analysis-output/JellyRuntimeRecovered.c
           if-no-files-found: warn
       - name: Publish recovery report
         run: |

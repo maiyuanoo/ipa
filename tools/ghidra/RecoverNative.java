@@ -226,6 +226,17 @@ public class RecoverNative extends GhidraScript {
         return evidenceStrings;
     }
 
+    private Set<String> getJellyRuntimeEvidenceStrings() {
+        Set<String> evidenceStrings = new HashSet<String>();
+        String[] values = {
+            "il2cpp_domain_get", "il2cpp_class_get_image", "il2cpp_class_get_parent",
+            "il2cpp_class_num_fields", "il2cpp_class_get_rank",
+            "il2cpp_gc_wbarrier_set_field", "il2cpp_free", "UnityFramework"
+        };
+        for (String value : values) evidenceStrings.add(value);
+        return evidenceStrings;
+    }
+
     private void writePointerChain(PrintWriter writer, long address, int count) {
         writer.printf("/* Pointer chain at 0x%08x:", address);
         try {
@@ -247,7 +258,9 @@ public class RecoverNative extends GhidraScript {
         }
         boolean drawingMode = arguments.length == 2 && arguments[1].equals("drawing");
         boolean jellyMode = arguments.length == 2 && arguments[1].equals("jelly");
-        Set<String> evidenceStrings = jellyMode ? getJellyDrawingEvidenceStrings() : getEvidenceStrings();
+        boolean runtimeMode = arguments.length == 2 && arguments[1].equals("runtime");
+        Set<String> evidenceStrings = runtimeMode ? getJellyRuntimeEvidenceStrings() :
+            (jellyMode ? getJellyDrawingEvidenceStrings() : getEvidenceStrings());
 
         File outputFile = new File(arguments[0]);
         File parentDirectory = outputFile.getParentFile();
@@ -272,11 +285,14 @@ public class RecoverNative extends GhidraScript {
             allFunctions.add(function);
             boolean selectedForDrawingRecovery = drawingMode && isDrawingFunction(function);
             boolean selectedForJellyRecovery = jellyMode && evidenceReferenceOffsets.contains(function.getEntryPoint().getOffset());
-            boolean selectedForFullRecovery = !drawingMode && !jellyMode &&
+            boolean selectedForFullRecovery = !drawingMode && !jellyMode && !runtimeMode &&
                 (isTargetFunction(function.getName()) || isRuntimeDispatcher(function) ||
                 blockInvokeOffsets.contains(function.getEntryPoint().getOffset()) ||
                 evidenceReferenceOffsets.contains(function.getEntryPoint().getOffset()));
-            if (selectedForDrawingRecovery || selectedForJellyRecovery || selectedForFullRecovery) {
+            boolean selectedForRuntimeRecovery = runtimeMode &&
+                evidenceReferenceOffsets.contains(function.getEntryPoint().getOffset());
+            if (selectedForDrawingRecovery || selectedForJellyRecovery || selectedForRuntimeRecovery ||
+                selectedForFullRecovery) {
                 targetFunctions.add(function);
             }
         }
@@ -293,7 +309,8 @@ public class RecoverNative extends GhidraScript {
             }
             for (Function function : targetFunctions) {
                 String functionName = function.getName();
-                DecompileResults result = decompiler.decompileFunction(function, (drawingMode || jellyMode) ? 30 : 120, monitor);
+                DecompileResults result = decompiler.decompileFunction(function,
+                    (drawingMode || jellyMode || runtimeMode) ? 30 : 120, monitor);
                 if (!result.decompileCompleted() || result.getDecompiledFunction() == null) {
                     writer.printf("/* Unable to decompile %s at %s */%n%n", functionName, function.getEntryPoint());
                     continue;
