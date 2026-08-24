@@ -39,6 +39,9 @@ typedef struct RussDrawingEntitySnapshot {
     float z;
     __unsafe_unretained NSString *name;
 } RussDrawingEntitySnapshot;
+
+#define kRussDrawingSnapshotCapacity 128
+#define kRussDrawingLabelCapacity 48
 /*UnityEngine.Color 为四个连续 float；原版通过 Graphic.get_color/set_color 读写完整16字节*/
 /* il2cpp基础前向声明 数组结构体(头16字节klass+monitor bounds 8 max_length 8 数据从32开始)*/
 
@@ -1208,7 +1211,7 @@ static NSString *GetDrawingEntityName(Il2CppObject *entity) {
 }
 
 static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshots, NSUInteger capacity) {
-    if (snapshots == NULL || capacity == 0 || !EnsureDrawingApi()) return 0;
+    if (snapshots == NULL || capacity == 0 || !NSThread.isMainThread || !EnsureDrawingApi()) return 0;
     Il2CppObject *manager = NULL;
     gIl2CppFieldStaticGetValue(gDrawingManagerInstanceField, &manager);
     if (manager == NULL) return 0;
@@ -1250,6 +1253,7 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
         Il2CppObject *transform = GetDrawingEntityTransform(entity);
         float x = 0.0f, y = 0.0f, z = 0.0f;
         if (transform == NULL || !GetObjectWorldPosition(transform, &x, &y, &z)) continue;
+        if (!isfinite(x) || !isfinite(y) || !isfinite(z)) continue;
         snapshots[count].x = x;
         snapshots[count].y = y;
         snapshots[count].z = z;
@@ -2012,8 +2016,8 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
     self.drawingOverlay.backgroundColor = UIColor.clearColor;
     self.drawingOverlay.userInteractionEnabled = NO;
     self.drawingOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    self.drawingLabels = [NSMutableArray arrayWithCapacity:32];
-    for (NSInteger index = 0; index < 32; index++) {
+    self.drawingLabels = [NSMutableArray arrayWithCapacity:kRussDrawingLabelCapacity];
+    for (NSInteger index = 0; index < kRussDrawingLabelCapacity; index++) {
         RussOutlinedLabel *label = [[RussOutlinedLabel alloc] initWithFrame:CGRectMake(-160.0, -24.0, 160.0, 18.0)];
         label.font = [UIFont boldSystemFontOfSize:12.0];
         label.textAlignment = NSTextAlignmentCenter;
@@ -2028,7 +2032,7 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
     self.drawingDisplayLink.preferredFramesPerSecond = 30;
     [self.drawingDisplayLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
 }
-/*独立绘制覆盖层固定复用 32 个标签，避免在游戏帧循环中反复创建 UIKit 对象。*/
+/*独立绘制覆盖层固定复用标签，避免在游戏帧循环中反复创建 UIKit 对象。*/
 
 - (void)stopDrawingOverlay {
     [self.drawingDisplayLink invalidate];
@@ -2039,27 +2043,30 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
 }
 
 - (void)updateDrawingOverlay {
-    if (self.drawingOverlay == nil || self.drawingLabels == nil) return;
+    if (self.drawingOverlay == nil || self.drawingLabels == nil || !NSThread.isMainThread) return;
     for (RussOutlinedLabel *label in self.drawingLabels) label.hidden = YES;
     Il2CppObject *camera = GetMainCameraObject();
     if (camera == NULL) return;
     float cameraX = 0.0f, cameraY = 0.0f, cameraZ = 0.0f;
     if (!GetObjectWorldPosition(camera, &cameraX, &cameraY, &cameraZ)) return;
 
-    RussDrawingEntitySnapshot snapshots[32] = {0};
-    NSUInteger snapshotCount = CopyDrawingEntitySnapshots(snapshots, 32);
+    RussDrawingEntitySnapshot snapshots[kRussDrawingSnapshotCapacity] = {0};
+    NSUInteger snapshotCount = CopyDrawingEntitySnapshots(snapshots, kRussDrawingSnapshotCapacity);
     CGFloat width = self.drawingOverlay.bounds.size.width;
     CGFloat height = self.drawingOverlay.bounds.size.height;
-    for (NSUInteger index = 0; index < snapshotCount && index < self.drawingLabels.count; index++) {
+    NSUInteger visibleLabelIndex = 0;
+    for (NSUInteger index = 0; index < snapshotCount && visibleLabelIndex < self.drawingLabels.count; index++) {
         RussDrawingEntitySnapshot snapshot = snapshots[index];
         float screenX = 0.0f, screenY = 0.0f, depth = -1.0f;
         if (!ProjectWorldToScreen(camera, snapshot.x, snapshot.y, snapshot.z, &screenX, &screenY, &depth) ||
+            !isfinite(screenX) || !isfinite(screenY) || !isfinite(depth) ||
             depth <= 0.0f || screenX < 0.0f || screenX > width || screenY < 0.0f || screenY > height) continue;
         float dx = snapshot.x - cameraX;
         float dy = snapshot.y - cameraY;
         float dz = snapshot.z - cameraZ;
         float distance = sqrtf(dx * dx + dy * dy + dz * dz);
-        RussOutlinedLabel *label = self.drawingLabels[index];
+        if (!isfinite(distance)) continue;
+        RussOutlinedLabel *label = self.drawingLabels[visibleLabelIndex++];
         label.frame = CGRectMake(screenX - 80.0f, height - screenY - 9.0f, 160.0f, 18.0f);
         label.text = [NSString stringWithFormat:@"%@ %.0fm", snapshot.name ?: @"物资", distance];
         label.hidden = NO;
