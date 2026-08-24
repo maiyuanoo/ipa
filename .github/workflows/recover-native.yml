@@ -6,6 +6,7 @@ on:
     paths:
       - analysis/input/RussOriginal.dylib
       - analysis/input/Ciyue0818.dylib
+      - analysis/input/GD.dylib
       - tools/ghidra/RecoverNative.java
       - .github/workflows/recover-native.yml
 
@@ -36,16 +37,37 @@ jobs:
             echo "symbols:"
             xcrun nm -arch arm64 -m "$INPUT" || true
           } > analysis-output/ciyue-macos-address-layout.txt
-      - name: Upload macOS address layout
+      - name: Verify Jelly arm64 Mach-O address layout
+        run: |
+          set -euo pipefail
+          INPUT="analysis/input/GD.dylib"
+          test -f "$INPUT"
+          mkdir -p analysis-output
+          {
+            echo "sha256:"
+            shasum -a 256 "$INPUT"
+            echo
+            echo "file:"
+            file "$INPUT"
+            echo
+            echo "load commands:"
+            xcrun otool -arch arm64 -l "$INPUT"
+            echo
+            echo "symbols:"
+            xcrun nm -arch arm64 -m "$INPUT" || true
+          } > analysis-output/jelly-macos-address-layout.txt
+      - name: Upload macOS address layouts
         uses: actions/upload-artifact@v4
         with:
-          name: ciyue-macos-address-layout
-          path: analysis-output/ciyue-macos-address-layout.txt
-      - name: Publish macOS address layout
+          name: drawing-macos-address-layouts
+          path: |
+            analysis-output/ciyue-macos-address-layout.txt
+            analysis-output/jelly-macos-address-layout.txt
+      - name: Publish macOS address layouts
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add analysis-output/ciyue-macos-address-layout.txt
+          git add analysis-output/ciyue-macos-address-layout.txt analysis-output/jelly-macos-address-layout.txt
           if git diff --cached --quiet; then
             exit 0
           fi
@@ -86,6 +108,20 @@ jobs:
           CIYUE_DRAWING_STATUS=$?
           printf '%s\n' "$CIYUE_DRAWING_STATUS" > analysis-output/ciyue-drawing-ghidra.exit-code
           cat analysis-output/ciyue-drawing-ghidra.log
+          exit 0
+      - name: Recover Jelly drawing pseudocode
+        run: |
+          mkdir -p analysis-output "$RUNNER_TEMP/ghidra-project"
+          set +e
+          "$ANALYZER_PATH" "$RUNNER_TEMP/ghidra-project" JellyDrawingRecovery \
+            -import analysis/input/GD.dylib \
+            -processor AARCH64:LE:64:v8A \
+            -scriptPath tools/ghidra \
+            -postScript RecoverNative.java analysis-output/JellyDrawingRecovered.c jelly \
+            -deleteProject > analysis-output/jelly-drawing-ghidra.log 2>&1
+          JELLY_DRAWING_STATUS=$?
+          printf '%s\n' "$JELLY_DRAWING_STATUS" > analysis-output/jelly-drawing-ghidra.exit-code
+          cat analysis-output/jelly-drawing-ghidra.log
           exit 0
       - name: Publish recovery report
         run: |
