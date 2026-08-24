@@ -4,9 +4,13 @@
 
 - 目标 `UnityFramework`：`C:\Users\马思远\Desktop\kaifa\recovered\target\UnityFramework`
 - 目标 `global-metadata.dat` SHA-256：`c317c73380c29fba336cf4bbad4114b5ed39c5f8c381ccb6187b209e4e2b8aaf`
-- 热更程序集 `UpdateScript_500.dll` SHA-256：`58aaee78156e3fa671c957c77eb2da249bc1a4ee782a58fdbd39a0e4e54b4561`
+- 热更 `updatescript_500.dll.ab` AssetBundle SHA-256：`58aaee78156e3fa671c957c77eb2da249bc1a4ee782a58fdbd39a0e4e54b4561`
 
-元数据哈希与两个可用基准 IPA 相同，因此 `OEPJBOIGGPO`、`DIGLCECMPAB` 和 `JHDAFFFAKCK` 的已审计 IL 结论仍适用于目标包。
+其中 `58aa…4561` 是 AssetBundle 哈希，不是内部 PE 文件哈希。从该 AssetBundle 的
+`UpdateScript_500.dll` TextAsset 解出的 PE 文件 SHA-256 是
+`f1f1c6f0ea773b7200c5b016a6cbee40e1be116c0467d6eaa39356cc86fcadad`，与
+`C:\Users\马思远\Desktop\kaifa\UpdateScript_500.dll` 完全一致。元数据哈希与两个可用基准 IPA
+相同，因此 `OEPJBOIGGPO`、`DIGLCECMPAB` 和 `JHDAFFFAKCK` 的已审计 IL 结论仍适用于目标包。
 
 ## UnityFramework 导出核验
 

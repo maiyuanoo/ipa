@@ -24,7 +24,7 @@
 
 `c317c73380c29fba336cf4bbad4114b5ed39c5f8c381ccb6187b209e4c2b8aaf`
 
-两者的 `UpdateScript_500.dll` SHA-256 相同：
+两者的 `updatescript_500.dll.ab` AssetBundle SHA-256 相同：
 
 `58aaee78156e3fa671c957c77eb2da249bc1a4ee782a58fdbd39a0e4e54b4561`
 
@@ -32,7 +32,9 @@
 
 ## 已确认的数据流
 
-热更程序集 `UpdateScript_500.dll` 中：
+从该 AssetBundle 的 `UpdateScript_500.dll` TextAsset 解出的 PE 文件 SHA-256 为
+`f1f1c6f0ea773b7200c5b016a6cbee40e1be116c0467d6eaa39356cc86fcadad`；它与
+`C:\Users\马思远\Desktop\kaifa\UpdateScript_500.dll` 完全一致。热更程序集内容中：
 
 - `OEPJBOIGGPO`：实体管理器。
 - `BHOAGIJIMMJ`：`OEPJBOIGGPO` 静态实例字段。
