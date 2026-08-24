@@ -29,8 +29,11 @@ jobs:
           if [ "$BUILD_STATUS" -ne 0 ]; then
             exit "$BUILD_STATUS"
           fi
-          file iOS·Origin.dylib
-          xcrun lipo -info iOS·Origin.dylib
+          test -f 'iOS·Origin.dylib'
+          file 'iOS·Origin.dylib'
+          xcrun lipo -info 'iOS·Origin.dylib'
+          shasum -a 256 'iOS·Origin.dylib'
+          xcrun otool -D 'iOS·Origin.dylib'
       - name: Upload build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
