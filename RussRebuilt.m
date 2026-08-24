@@ -329,7 +329,8 @@ static BOOL ReadInstanceField(Il2CppObject *instance, void *field, void *value, 
     }
     if (gIl2CppFieldGetOffset == NULL) return NO;
     size_t offset = gIl2CppFieldGetOffset(field);
-    if (offset < 0x10 || offset > 0x3fff) return NO;
+    /* IL2CPP 对象头占用 klass/monitor 两个指针；字段必须位于对象头之后。 */
+    if (offset < 0x10) return NO;
     memcpy(value, (const uint8_t *)instance + offset, valueSize);
     return YES;
 }
