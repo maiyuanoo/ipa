@@ -98,6 +98,7 @@ static void *gDrawingPrefabConfigField;
 static void *gDrawingItemNameField;
 static void *gDrawingPrefabNameField;
 static const MethodInfo *gDrawingEntityTransformMethod;
+static const MethodInfo *gDrawingEntitySnapshotMethod;
 
 static void *gUnityFrameworkHandle;
 static uintptr_t gUnityFrameworkBase;
@@ -1166,6 +1167,9 @@ static BOOL EnsureDrawingApi(void) {
     if (gDrawingEntityTransformMethod == NULL) {
         gDrawingEntityTransformMethod = gIl2CppClassGetMethodFromName(gDrawingEntityKlass, "MCCJPBBPEMK", 0);
     }
+    if (gDrawingEntitySnapshotMethod == NULL) {
+        gDrawingEntitySnapshotMethod = gIl2CppClassGetMethodFromName(gDrawingManagerKlass, "JHDAFFFAKCK", 0);
+    }
     if (gDrawingEntityTransformField == NULL) {
         gDrawingEntityTransformField = gIl2CppClassGetFieldFromName(gDrawingEntityKlass, "<EPOOFKEKHEN>k__BackingField");
     }
@@ -1176,9 +1180,10 @@ static BOOL EnsureDrawingApi(void) {
         gDrawingPrefabConfigField = gIl2CppClassGetFieldFromName(gDrawingEntityKlass, "OOKGDEJMAKP");
     }
     return gDrawingManagerInstanceField != NULL && gDrawingEntityDictionaryField != NULL &&
+        gDrawingEntitySnapshotMethod != NULL &&
         (gDrawingEntityTransformMethod != NULL || gDrawingEntityTransformField != NULL);
 }
-/*绘制只依赖热更公开字段和已恢复的 Transform getter；热更程序集未加载时返回 NO，后续帧自动重试。*/
+/*绘制只依赖热更主集合快照入口和已恢复的 Transform getter；热更程序集未加载时返回 NO，后续帧自动重试。*/
 
 static Il2CppObject *GetDrawingEntityTransform(Il2CppObject *entity) {
     if (entity == NULL) return NULL;
@@ -1216,57 +1221,43 @@ static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshot
     gIl2CppFieldStaticGetValue(gDrawingManagerInstanceField, &manager);
     if (manager == NULL) return 0;
 
-    Il2CppObject *dictionary = NULL;
-    gIl2CppFieldGetValue(manager, gDrawingEntityDictionaryField, &dictionary);
-    if (dictionary == NULL) return 0;
-    void *dictionaryKlass = *(void **)dictionary;
-    if (dictionaryKlass == NULL) return 0;
-    const MethodInfo *valuesMethod = gIl2CppClassGetMethodFromName(dictionaryKlass, "get_Values", 0);
-    if (valuesMethod == NULL) return 0;
-
     Il2CppObject *exception = NULL;
-    Il2CppObject *values = gIl2CppRuntimeInvoke(valuesMethod, dictionary, NULL, &exception);
-    if (exception != NULL || values == NULL) return 0;
-    void *valuesKlass = *(void **)values;
-    const MethodInfo *getEnumeratorMethod = valuesKlass == NULL ? NULL : gIl2CppClassGetMethodFromName(valuesKlass, "GetEnumerator", 0);
-    if (getEnumeratorMethod == NULL) return 0;
+    Il2CppObject *entities = gIl2CppRuntimeInvoke(gDrawingEntitySnapshotMethod, manager, NULL, &exception);
+    if (exception != NULL || entities == NULL) return 0;
+    void *listKlass = *(void **)entities;
+    if (listKlass == NULL) return 0;
+    const MethodInfo *countMethod = gIl2CppClassGetMethodFromName(listKlass, "get_Count", 0);
+    const MethodInfo *itemMethod = gIl2CppClassGetMethodFromName(listKlass, "get_Item", 1);
+    if (countMethod == NULL || itemMethod == NULL) return 0;
     exception = NULL;
-    Il2CppObject *enumerator = gIl2CppRuntimeInvoke(getEnumeratorMethod, values, NULL, &exception);
-    if (exception != NULL || enumerator == NULL) return 0;
+    Il2CppObject *countBox = gIl2CppRuntimeInvoke(countMethod, entities, NULL, &exception);
+    if (exception != NULL || countBox == NULL) return 0;
+    int *entityCount = (int *)gIl2CppObjectUnbox(countBox);
+    if (entityCount == NULL || *entityCount <= 0) return 0;
 
-    void *enumeratorKlass = *(void **)enumerator;
-    const MethodInfo *moveNextMethod = enumeratorKlass == NULL ? NULL : gIl2CppClassGetMethodFromName(enumeratorKlass, "MoveNext", 0);
-    const MethodInfo *currentMethod = enumeratorKlass == NULL ? NULL : gIl2CppClassGetMethodFromName(enumeratorKlass, "get_Current", 0);
-    const MethodInfo *disposeMethod = enumeratorKlass == NULL ? NULL : gIl2CppClassGetMethodFromName(enumeratorKlass, "Dispose", 0);
-    if (moveNextMethod == NULL || currentMethod == NULL) return 0;
-
-    NSUInteger count = 0;
-    while (count < capacity) {
+    NSUInteger snapshotCount = 0;
+    NSUInteger limit = MIN(capacity, (NSUInteger)*entityCount);
+    for (NSUInteger entityIndex = 0; entityIndex < limit; entityIndex++) {
         exception = NULL;
-        Il2CppObject *hasNextBox = gIl2CppRuntimeInvoke(moveNextMethod, enumerator, NULL, &exception);
-        if (exception != NULL || hasNextBox == NULL) break;
-        BOOL *hasNext = (BOOL *)gIl2CppObjectUnbox(hasNextBox);
-        if (hasNext == NULL || !*hasNext) break;
-        exception = NULL;
-        Il2CppObject *entity = gIl2CppRuntimeInvoke(currentMethod, enumerator, NULL, &exception);
-        if (exception != NULL || entity == NULL) continue;
+        int index = (int)entityIndex;
+        void *arguments[] = { &index };
+        Il2CppObject *entity = gIl2CppRuntimeInvoke(itemMethod, entities, arguments, &exception);
+        if (exception != NULL || entity == NULL) break;
         Il2CppObject *transform = GetDrawingEntityTransform(entity);
         float x = 0.0f, y = 0.0f, z = 0.0f;
-        if (transform == NULL || !GetObjectWorldPosition(transform, &x, &y, &z)) continue;
-        if (!isfinite(x) || !isfinite(y) || !isfinite(z)) continue;
-        snapshots[count].x = x;
-        snapshots[count].y = y;
-        snapshots[count].z = z;
-        snapshots[count].name = GetDrawingEntityName(entity);
-        count++;
+        if (transform == NULL || !GetObjectWorldPosition(transform, &x, &y, &z) ||
+            !isfinite(x) || !isfinite(y) || !isfinite(z)) {
+            continue;
+        }
+        snapshots[snapshotCount].x = x;
+        snapshots[snapshotCount].y = y;
+        snapshots[snapshotCount].z = z;
+        snapshots[snapshotCount].name = GetDrawingEntityName(entity);
+        snapshotCount++;
     }
-    if (disposeMethod != NULL) {
-        exception = NULL;
-        gIl2CppRuntimeInvoke(disposeMethod, enumerator, NULL, &exception);
-    }
-    return count;
+    return snapshotCount;
 }
-/*不触及 Dictionary 内部布局：通过 Values/GetEnumerator/MoveNext/Current 枚举，实体指针只在当前帧内使用。*/
+/*JHDAFFFAKCK 的热更 IL 已证实从 NLMAFONOFFH.Values 复制实体列表；避免反射调用 ValueCollection.Enumerator 值类型方法。*/
 
 @interface RussOutlinedLabel : UILabel
 @end
