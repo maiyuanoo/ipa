@@ -42,6 +42,7 @@ typedef struct RussDrawingEntitySnapshot {
 
 #define kRussDrawingSnapshotCapacity 128
 #define kRussDrawingLabelCapacity 48
+#define kRussDrawingAssemblyStatusLength 160
 /*UnityEngine.Color 为四个连续 float；原版通过 Graphic.get_color/set_color 读写完整16字节*/
 /* il2cpp基础前向声明 数组结构体(头16字节klass+monitor bounds 8 max_length 8 数据从32开始)*/
 
@@ -209,6 +210,27 @@ static void *FindClassInAllAssemblies(const char *namespaceName, const char *cla
     return NULL;
 }
 /*跨全部程序集找类(照原版0x178a0循环):热更类camerafollow/ugcobjectcoffin命名空间为"" 引擎类为"UnityEngine" dll已验证*/
+
+static NSString *CopyDrawingAssemblyStatus(void) {
+    if (!EnsureIl2CppThread() || gIl2CppImageGetName == NULL) return @"程序集枚举不可用";
+    Il2CppDomain *domain = gIl2CppDomainGet();
+    size_t count = 0;
+    Il2CppAssembly **assemblies = gIl2CppDomainGetAssemblies(domain, &count);
+    if (assemblies == NULL || count == 0 || count > 4096) return @"程序集枚举为空";
+
+    NSMutableString *status = [NSMutableString stringWithFormat:@"程序集 %lu 个", (unsigned long)count];
+    for (size_t index = 0; index < count; index++) {
+        const Il2CppImage *image = gIl2CppAssemblyGetImage(assemblies[index]);
+        const char *name = image != NULL ? gIl2CppImageGetName(image) : NULL;
+        if (name == NULL || (strstr(name, "Update") == NULL && strstr(name, "Script") == NULL)) continue;
+        NSString *assemblyName = [NSString stringWithUTF8String:name];
+        if (assemblyName.length == 0) continue;
+        if (status.length + assemblyName.length + 2 > kRussDrawingAssemblyStatusLength) break;
+        [status appendFormat:@" %@", assemblyName];
+    }
+    return status;
+}
+/*仅记录程序集总数和热更候选名称，不记录文件路径；用于区分热更未加载与元数据不匹配。*/
 
 #define kRussTypeCacheMax 12
 static void *gTypeCacheKlass[kRussTypeCacheMax];
@@ -1179,7 +1201,7 @@ static BOOL EnsureDrawingApi(void) {
     if (gDrawingManagerKlass == NULL) {
         gDrawingManagerKlass = FindClassInAllAssemblies("", "OEPJBOIGGPO");
         if (gDrawingManagerKlass == NULL) {
-            gDrawingRuntimeStatus = @"未找到 OEPJBOIGGPO";
+            gDrawingRuntimeStatus = [NSString stringWithFormat:@"未找到 OEPJBOIGGPO（%@）", CopyDrawingAssemblyStatus()];
             return NO;
         }
     }
