@@ -32,9 +32,10 @@ var snapshotMethod = targetType.Definition.GetMethods()
     .Select(handle => (Handle: handle, Definition: metadata.GetMethodDefinition(handle)))
     .FirstOrDefault(item => metadata.GetString(item.Definition.Name) == "JHDAFFFAKCK");
 
-if (snapshotMethod.Handle.IsNil || snapshotMethod.Definition.RelativeVirtualAddress == 0)
+if (snapshotMethod.Handle.IsNil || snapshotMethod.Definition.RelativeVirtualAddress == 0 ||
+    !HasNoParameters(snapshotMethod.Definition, metadata))
 {
-    Console.Error.WriteLine("未找到实体快照方法 JHDAFFFAKCK。");
+    Console.Error.WriteLine("未找到零参数实体快照方法 JHDAFFFAKCK。");
     return 4;
 }
 
@@ -78,16 +79,19 @@ if (managerInstanceField.Name.IsNil || !managerInstanceField.Attributes.HasFlag(
 var entityFieldNames = entityType.Definition.GetFields()
     .Select(handle => metadata.GetString(metadata.GetFieldDefinition(handle).Name))
     .ToHashSet(StringComparer.Ordinal);
-var entityMethodNames = entityType.Definition.GetMethods()
-    .Select(handle => metadata.GetString(metadata.GetMethodDefinition(handle).Name))
-    .ToHashSet(StringComparer.Ordinal);
+var entityTransformMethod = entityType.Definition.GetMethods()
+    .Select(handle => (Handle: handle, Definition: metadata.GetMethodDefinition(handle)))
+    .FirstOrDefault(item => metadata.GetString(item.Definition.Name) == "MCCJPBBPEMK");
 var requiredEntityFields = new[] { "<EPOOFKEKHEN>k__BackingField", "LCBPLHGAECL", "OOKGDEJMAKP" };
 var missingEntityFields = requiredEntityFields.Where(field => !entityFieldNames.Contains(field)).ToArray();
 
-if (!entityMethodNames.Contains("MCCJPBBPEMK") || missingEntityFields.Length > 0)
+if (entityTransformMethod.Handle.IsNil || !HasNoParameters(entityTransformMethod.Definition, metadata) ||
+    missingEntityFields.Length > 0)
 {
     Console.Error.WriteLine("DIGLCECMPAB 不符合已确认的 Transform 或名称读取契约。");
-    if (!entityMethodNames.Contains("MCCJPBBPEMK")) Console.Error.WriteLine("缺少 Transform 方法: MCCJPBBPEMK。");
+    if (entityTransformMethod.Handle.IsNil || !HasNoParameters(entityTransformMethod.Definition, metadata)) {
+        Console.Error.WriteLine("缺少零参数 Transform 方法: MCCJPBBPEMK。");
+    }
     if (missingEntityFields.Length > 0) Console.Error.WriteLine("缺少实体字段: " + string.Join(", ", missingEntityFields));
     return 7;
 }
@@ -134,6 +138,9 @@ static bool ReferencesTrackedField(byte[] il, IReadOnlyDictionary<int, string> t
     }
     return false;
 }
+
+static bool HasNoParameters(MethodDefinition method, MetadataReader metadata) =>
+    !method.GetParameters().Any(handle => metadata.GetParameter(handle).SequenceNumber > 0);
 
 static IEnumerable<string> Decode(byte[] il, MetadataReader metadata, IReadOnlyDictionary<int, string> trackedFields)
 {
