@@ -1160,15 +1160,35 @@ static NSString *GetDrawingConfigName(Il2CppObject *config, void **fieldCache) {
 }
 
 static BOOL EnsureDrawingApi(void) {
-    if (!EnsureIl2CppThread() || gIl2CppFieldStaticGetValue == NULL ||
-        gIl2CppObjectUnbox == NULL) return NO;
+    if (!EnsureIl2CppThread()) {
+        gDrawingRuntimeStatus = @"IL2CPP 运行时未就绪";
+        return NO;
+    }
+    if (gIl2CppFieldStaticGetValue == NULL) {
+        gDrawingRuntimeStatus = @"静态字段读取接口缺失";
+        return NO;
+    }
+    if (gIl2CppObjectUnbox == NULL) {
+        gDrawingRuntimeStatus = @"整数拆箱接口缺失";
+        return NO;
+    }
+    if (gIl2CppClassGetFieldFromName == NULL) {
+        gDrawingRuntimeStatus = @"字段查找接口缺失";
+        return NO;
+    }
     if (gDrawingManagerKlass == NULL) {
         gDrawingManagerKlass = FindClassInAllAssemblies("", "OEPJBOIGGPO");
-        if (gDrawingManagerKlass == NULL) return NO;
+        if (gDrawingManagerKlass == NULL) {
+            gDrawingRuntimeStatus = @"未找到 OEPJBOIGGPO";
+            return NO;
+        }
     }
     if (gDrawingEntityKlass == NULL) {
         gDrawingEntityKlass = FindClassInAllAssemblies("", "DIGLCECMPAB");
-        if (gDrawingEntityKlass == NULL) return NO;
+        if (gDrawingEntityKlass == NULL) {
+            gDrawingRuntimeStatus = @"未找到 DIGLCECMPAB";
+            return NO;
+        }
     }
     if (gDrawingManagerInstanceField == NULL) {
         gDrawingManagerInstanceField = gIl2CppClassGetFieldFromName(gDrawingManagerKlass, "BHOAGIJIMMJ");
@@ -1191,11 +1211,21 @@ static BOOL EnsureDrawingApi(void) {
     if (gDrawingPrefabConfigField == NULL) {
         gDrawingPrefabConfigField = gIl2CppClassGetFieldFromName(gDrawingEntityKlass, "OOKGDEJMAKP");
     }
-    return gDrawingManagerInstanceField != NULL &&
-        gDrawingEntitySnapshotMethod != NULL &&
-        (gDrawingEntityTransformMethod != NULL || gDrawingEntityTransformField != NULL);
+    if (gDrawingManagerInstanceField == NULL) {
+        gDrawingRuntimeStatus = @"未找到 BHOAGIJIMMJ";
+        return NO;
+    }
+    if (gDrawingEntitySnapshotMethod == NULL) {
+        gDrawingRuntimeStatus = @"未找到 JHDAFFFAKCK";
+        return NO;
+    }
+    if (gDrawingEntityTransformMethod == NULL && gDrawingEntityTransformField == NULL) {
+        gDrawingRuntimeStatus = @"未找到 Transform 入口";
+        return NO;
+    }
+    return YES;
 }
-/*绘制只依赖热更主集合快照入口和已恢复的 Transform getter；热更程序集未加载时返回 NO，后续帧自动重试。*/
+/*绘制只依赖已恢复的热更接口；初始化失败时保留精确状态，后续帧自动重试。*/
 
 static Il2CppObject *GetDrawingEntityTransform(Il2CppObject *entity) {
     if (entity == NULL) return NULL;
@@ -1230,7 +1260,6 @@ static NSString *GetDrawingEntityName(Il2CppObject *entity) {
 static NSUInteger CopyDrawingEntitySnapshots(RussDrawingEntitySnapshot *snapshots, NSUInteger capacity) {
     if (snapshots == NULL || capacity == 0 || !NSThread.isMainThread) return 0;
     if (!EnsureDrawingApi()) {
-        gDrawingRuntimeStatus = @"热更接口未就绪";
         return 0;
     }
     Il2CppObject *manager = NULL;
